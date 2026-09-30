@@ -1,12 +1,13 @@
 // Yumak'ın pozları. Tümü 88x88'lik ızgaraya çizilir (yakın plan yüz hariç).
 // Kaplumbağa kabuğu desenli, tombul, kocaman gözlü.
-import { M, ellipse, tri, limb, tube, px, line, shade, fbm, WHITE } from './pixel.js';
+import { M, K, ellipse, tri, limb, tube, px, line, shade, fbm, WHITE, INK } from './pixel.js';
 
 export const W = 88, H = 88, FACE_W = 104, FACE_H = 88;
 const GROUND = 83;
 
 /* ---------- desenler ---------- */
 function furPattern(lx, ly, kind) {
+  if (kind === 2) return Math.sin(ly * 1.2 + lx * 0.5) < 0.55; // kaldırılan kollar: turuncu, ince bantlı
   if (kind === 1) { // bacaklar: hafif çizgili
     return fbm(lx / 4 + 7, ly / 5, 13) > 0.42 && Math.sin(ly * 1.1 + lx * 0.3) < 0.75;
   }
@@ -120,6 +121,16 @@ export function headFront(g, hx, hy, s, st) {
     line(g, hx + sd * 12 * s, hy - 8 * s, hx + sd * 13 * s, hy - 14 * s, '#f1d3c4');
     line(g, hx + sd * 10 * s, hy - 9 * s, hx + sd * 10.5 * s, hy - 13 * s, '#f1d3c4');
   }
+  if (st.band) { // pembe ter bandı
+    limb(g, ...P(-17, -7.5), ...P(17, -7.5), 1.9 * s, 1.9 * s, M.PAINT, { kind: K.BAND }, 0.1);
+    limb(g, ...P(16, -7), ...P(20, -3), 1.1 * s, 0.9 * s, M.PAINT, { kind: K.BAND });
+  }
+  if (st.shades) { // güneş gözlüğü
+    for (const sx of [-7.6, 7.6]) ellipse(g, ...P(sx, 0.8), 5.6 * s, 4.1 * s, M.PAINT, { kind: K.SHADES }, 0.05);
+    limb(g, ...P(-2.4, 0), ...P(2.4, 0), 0.9 * s, 0.9 * s, M.PAINT, { kind: K.SHADES });
+    for (const sd of [-1, 1]) limb(g, ...P(sd * 13, 0), ...P(sd * 17.5, -2.5), 0.8 * s, 0.8 * s, M.PAINT, { kind: K.SHADES });
+    for (const sx of [-10, 5.2]) { px(g, ...P(sx, -1.4), M.SHINE); px(g, ...P(sx + 1, -2.3), M.SHINE); px(g, ...P(sx + 1.2, 1.2), M.SHINE); }
+  }
   whiskers(g, hx, hy, s, 0);
 }
 
@@ -144,6 +155,11 @@ export function headSide(g, hx, hy, s, st) {
   eye(g, ...P(9.6, 0.8), s, st, 0.72);
   nose(g, ...P(14.2, 5), s * 0.85);
   mouth(g, ...P(12.4, 7.4), s * 0.85, st);
+  if (st.band) {
+    limb(g, ...P(-15, -6.5), ...P(13, -9), 1.9 * s, 1.9 * s, M.PAINT, { kind: K.BAND }, 0.1);
+    limb(g, ...P(-15, -6), ...P(-20, -2.5), 1.1 * s, 0.9 * s, M.PAINT, { kind: K.BAND });
+    limb(g, ...P(-15, -6), ...P(-19.5, -8.5), 1.1 * s, 0.9 * s, M.PAINT, { kind: K.BAND });
+  }
   whiskers(g, hx, hy, s, 1);
 }
 
@@ -152,38 +168,198 @@ function paw(g, x, y, ginger, rx = 5.4, ry = 3) {
   ellipse(g, x, y, rx, ry, ginger ? M.PAWG : M.PAWK, {}, 0.05);
 }
 
+// sit: st.paws = 'down' | 'groom' | 'chest' | 'together' | 'wave' | 'tap' | 'hold' | 'wipe'; st.headDy (baş eğme)
+//      st.prop = 'clipboard' | 'fish' | 'bottle' | 'towel' | 'box'
 export function sit(g, st) {
   g.clear();
   const cx = 44, t = st.t || 0;
   const bob = Math.sin(t * 2.4) > 0.3 ? 1 : 0;
   const sw = Math.sin(t * (st.tailFast ? 5 : 1.6));
+  const paws = st.paws || (st.groom ? 'groom' : 'down');
   tube(g, [60, 80], [88 + sw * 1.5, 82], [80 + sw * 4, 57 + Math.abs(sw) * 2], 6.4, 5.2, M.TAIL);
   ellipse(g, 24, 70, 12.5, 11.5, M.FUR, { ox: cx, oy: 60 });
   ellipse(g, 64, 70, 12.5, 11.5, M.FUR, { ox: cx, oy: 60 });
   paw(g, 19, 81.5, true, 7, 3); paw(g, 69, 81.5, false, 7, 3);
   ellipse(g, cx, 60 + bob * 0.3, 24.5, 22, M.FUR, { ox: cx, oy: 60 });
   ellipse(g, cx, 49, 15, 13, M.RUFF, { ox: cx, oy: 49 });
-  // ön bacaklar (biri yalanmak için kalkabilir)
-  ellipse(g, cx, 72, 3, 8, M.FAR, { ox: cx, oy: 60 });
-  limb(g, 37, 60, 37, 78, 4.5, 4.3, M.FUR, { ox: 37, oy: 60, kind: 1 });
-  paw(g, 37, 80.5, false, 5.8, 3.2);
-  if (st.groom) {
-    limb(g, 51, 60, 48, 44, 4.5, 4.2, M.FUR, { ox: 51, oy: 60, kind: 1 });
-    paw(g, 48, 41.5, false, 5, 3.4);
-  } else {
-    limb(g, 51, 60, 51, 78, 4.5, 4.3, M.FUR, { ox: 51, oy: 60, kind: 1 });
-    paw(g, 51, 80.5, false, 5.8, 3.2);
+  if (st.prop === 'towel') {
+    limb(g, 27, 46, 61, 46, 3.3, 3.3, M.PAINT, { kind: K.TOP }, 0.05);
+    limb(g, 33, 46, 32, 61, 2.9, 2.7, M.PAINT, { kind: K.TOP });
+    limb(g, 55, 46, 56, 61, 2.9, 2.7, M.PAINT, { kind: K.TOP });
+    line(g, 31, 58, 34, 58, '#ff7fa3'); line(g, 54, 58, 57, 58, '#ff7fa3');
   }
-  for (const x of [35, 39]) px(g, x, 82, M.LINE);
-  if (!st.groom) for (const x of [49, 53]) px(g, x, 82, M.LINE);
-  headFront(g, cx, 29 - bob, 1, st.groom ? { ...st, eyes: 'closed', mouth: 'tongue' } : st);
-  if (st.groom) paw(g, 48, 41.5, false, 5, 3.4);
+  // ön bacaklar
+  ellipse(g, cx, 72, 3, 8, M.FAR, { ox: cx, oy: 60 });
+  const leftUp = ['chest', 'together'].includes(paws) || st.prop === 'clipboard';
+  const rightUp = paws !== 'down' || st.prop === 'clipboard';
+  if (!leftUp) { limb(g, 37, 60, 37, 78, 4.5, 4.3, M.FUR, { ox: 37, oy: 60, kind: 1 }); paw(g, 37, 80.5, false, 5.8, 3.2); for (const x of [35, 39]) px(g, x, 82, M.LINE); }
+  if (!rightUp) { limb(g, 51, 60, 51, 78, 4.5, 4.3, M.FUR, { ox: 51, oy: 60, kind: 1 }); paw(g, 51, 80.5, false, 5.8, 3.2); for (const x of [49, 53]) px(g, x, 82, M.LINE); }
+  // kaldırılan patiler: [omuz, pati]
+  let L = null, R = null;
+  if (st.prop === 'clipboard') { L = [[37, 60], [37.5, 55]]; R = [[51, 60], [50.5, 55]]; }
+  else if (paws === 'chest') { L = [[37, 60], [40, 47.5]]; R = [[51, 60], [48, 47.5]]; }
+  else if (paws === 'together') { L = [[37, 60], [41.8, 47]]; R = [[51, 60], [46.2, 47]]; }
+  else if (paws === 'groom') R = [[51, 60], [48, 42]];
+  else if (paws === 'hold') R = [[51, 60], [49.5, 45.5]];
+  else if (paws === 'wave') R = [[51, 58], [60 + Math.sin(t * 9) * 2.2, 38]];
+  else if (paws === 'tap') R = [[51, 60], [65 + (st.tapK || 0) * 4, 70 - (st.tapK || 0) * 3]];
+  else if (paws === 'wipe') R = [[51, 58], [53 + Math.sin(t * 14) * 3, 27]];
+  for (const a of [L, R]) if (a) {
+    limb(g, a[0][0], a[0][1], a[1][0], a[1][1] + 1.5, 5.5, 5.2, M.SOLID, {}, 0, INK);
+    limb(g, a[0][0], a[0][1], a[1][0], a[1][1] + 1.5, 4.5, 4.2, M.FUR, { ox: a[0][0], oy: a[0][1], kind: 2 }, 0.08);
+  }
+  if (st.prop === 'clipboard') clipboard(g, 44, 52);
+  const face = paws === 'groom' ? { ...st, eyes: 'closed', mouth: 'tongue' } : st;
+  headFront(g, cx, 29 - bob + (st.headDy || 0), 1, face);
+  if (st.prop === 'fish') fish(g, 43, 42.5);
+  if (st.prop === 'bottle') bottle(g, 51, 50, 46.5, 38);
+  for (const a of [L, R]) if (a) { ellipse(g, a[1][0], a[1][1], 5.6, 4.3, M.SOLID, {}, 0, INK); paw(g, a[1][0], a[1][1], true, 4.6, 3.3); }
+  if (st.prop === 'box') box(g);
   return shade(g, PAT);
+}
+
+/* ---------- aksesuarlar ---------- */
+function dumbbell(g, x, y, vert = false) {
+  const a = vert ? [x, y - 5.4] : [x - 5.4, y], b = vert ? [x, y + 5.4] : [x + 5.4, y];
+  limb(g, a[0], a[1], b[0], b[1], 1.1, 1.1, M.PAINT, { kind: K.METAL }, 0.1);
+  for (const p of [a, b]) ellipse(g, p[0], p[1], vert ? 4.3 : 2.9, vert ? 2.9 : 4.3, M.PAINT, { kind: K.PINK }, 0.12);
+}
+function barbell(g, pL, pR) {
+  const y = (pL[1] + pR[1]) / 2, x0 = pL[0] - 9, x1 = pR[0] + 9;
+  limb(g, x0, y, x1, y, 1.1, 1.1, M.PAINT, { kind: K.METAL }, 0.1);
+  for (const x of [x0, x1]) { // plakalar: iki yumak
+    ellipse(g, x, y, 6.2, 6.2, M.PAINT, { kind: K.YARN }, 0.05);
+    line(g, x - 4, y - 3, x + 3, y + 4, '#ffe3f0'); line(g, x - 4, y + 3, x + 4, y - 3, '#b44d82'); line(g, x - 5, y, x + 5, y + 1, '#ffe3f0');
+  }
+}
+function whistle(g, x, y) {
+  ellipse(g, x + 2, y - 2, 5.2, 3.6, M.SOLID, {}, 0, INK);
+  ellipse(g, x + 2, y - 2, 4.2, 2.7, M.PAINT, { kind: K.METAL }, 0.35);
+  limb(g, x + 5.5, y - 3, x + 8, y - 4, 1.3, 1.3, M.PAINT, { kind: K.METAL }, 0.2);
+  px(g, x + 1, y - 3.5, M.SHINE); px(g, x + 2, y - 3.5, M.SHINE);
+}
+function clipboard(g, x, y) {
+  for (let j = -9; j <= 9; j++) for (let i = -7; i <= 7; i++) g.put(x + i, y + j, M.PAINT, 0.55 - j * 0.01, { kind: K.WOOD });
+  for (let j = -6; j <= 8; j++) for (let i = -5; i <= 5; i++) g.put(x + i, y + j, M.PAINT, 0.85, { kind: K.CREAM });
+  for (let i = -3; i <= 3; i++) { g.put(x + i, y - 9, M.PAINT, 0.7, { kind: K.METAL }); g.put(x + i, y - 8, M.PAINT, 0.45, { kind: K.METAL }); }
+  for (const r of [-3, 0, 3, 6]) line(g, x - 4, y + r, x + (r === 6 ? 1 : 4), y + r, '#8d7a86');
+  line(g, x + 2, y + 5, x + 4, y + 7, '#ff5f8f');
+}
+function fish(g, x, y) {
+  ellipse(g, x, y, 7.2, 3.2, M.PAINT, { kind: K.FISH }, 0.12);
+  tri(g, x + 6, y, x + 11, y - 4, x + 11, y + 4, M.PAINT, { kind: K.FISH });
+  px(g, x - 4, y - 1, M.PUPIL); line(g, x - 1, y - 2, x + 3, y - 2, '#e6f1fb');
+}
+function bottle(g, x0, y0, x1, y1) {
+  limb(g, x0, y0, x1, y1, 2.8, 2.5, M.PAINT, { kind: K.WATER }, 0.1);
+  const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy);
+  limb(g, x1, y1, x1 + dx / d * 2.5, y1 + dy / d * 2.5, 1.6, 1.6, M.PAINT, { kind: K.PINK });
+  line(g, x0 - 1, y0 - 2, x1 - 1, y1 + 2, '#e9f7ff');
+}
+function box(g) {
+  for (let y = 63; y <= 84; y++) for (let x = 16; x <= 72; x++) g.put(x, y, M.PAINT, 0.62 - (y - 63) * 0.012, { kind: K.CARD });
+  tri(g, 16, 63, 22, 55, 34, 63, M.PAINT, { kind: K.CARD }, 0.12);
+  tri(g, 54, 63, 66, 55, 72, 63, M.PAINT, { kind: K.CARD }, -0.08);
+  for (let y = 63; y <= 84; y++) for (let x = 40; x <= 48; x++) g.put(x, y, M.PAINT, 0.9, { kind: K.CARD });
+  line(g, 16, 64, 72, 64, '#8a5a2c');
+}
+function rope(g, pL, pR, ph) {
+  const v = Math.cos(ph * Math.PI * 2);
+  const cy = (pL[1] + pR[1]) / 2 + (v > 0 ? -v * 112 : -v * 48);
+  const cx = (pL[0] + pR[0]) / 2;
+  for (let i = 0; i <= 48; i++) {
+    const t = i / 48, a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c = t * t;
+    const x = a * pL[0] + b * cx + c * pR[0], y = a * pL[1] + b * cy + c * pR[1];
+    g.overlay(x, y, '#ff5f8f'); g.overlay(x, y + 1, '#c23f6b');
+  }
+}
+function hoop(g, cx, cy, ph, part) {
+  const ox = Math.sin(ph * Math.PI * 2) * 3.5, oy = Math.cos(ph * Math.PI * 2) * 1.2;
+  for (let a = 0; a < Math.PI * 2; a += 0.012) {
+    const s = Math.sin(a); if ((part === 'back') !== (s < 0)) continue;
+    const x = cx + ox + Math.cos(a) * 23, y = cy + oy + s * 5.5;
+    const col = (Math.floor(a / 0.26) % 2) ? '#ff5f8f' : '#fff4f8';
+    g.put(x, y, M.SOLID, 0.6, null, col); g.put(x, y + 1, M.SOLID, 0.6, null, col);
+  }
+}
+
+// ayakta duruş (arka ayakları üstünde): antrenman pozları için
+// st.pawL/pawR: pati hedefleri, st.elbowL/elbowR: dirsek (isteğe bağlı), st.squat 0..1, st.sway -1..1
+// st.prop: 'db' | 'db2' | 'barbell' | 'whistle', st.rope (faz), st.hoop (faz), st.flex
+export function stand(g, st) {
+  g.clear();
+  const t = st.t || 0, q = st.squat || 0, sway = st.sway || 0;
+  const cx = 44 + sway * 2.2, dy = q * 7;
+  const bob = Math.sin(t * 2.6) > 0.3 ? 1 : 0;
+  const O = (p) => [p[0] + sway * 2.2, p[1] + dy];
+  if (st.hoop != null) hoop(g, cx, 60 + dy, st.hoop, 'back');
+  const sw = Math.sin(t * 2.2);
+  tube(g, [cx + 8, 72], [cx + 26 + sw * 2, 77], [cx + 22 + sw * 5, 56 + Math.abs(sw) * 2], 5.6, 4.6, M.TAIL);
+  for (const [sx, gi] of [[-1, true], [1, false]]) {
+    const hip = [cx + sx * 9, 67 + dy], knee = [cx + sx * (10.5 + q * 5), 72 + dy * 0.6];
+    ellipse(g, hip[0], hip[1], 8.6, 8.6, M.FUR, { ox: cx, oy: 60 });
+    limb(g, knee[0], knee[1], cx + sx * (9.5 + q * 3), 80.5, 4.3, 3.9, M.FUR, { kind: 1 });
+    paw(g, cx + sx * (10.5 + q * 3), 81.6, gi, 5.6, 2.6);
+  }
+  ellipse(g, cx, 57 + dy, 19, 16.5, M.FUR, { ox: cx, oy: 57 }); // tombul göbek
+  ellipse(g, cx, 63 + dy, 10, 8.5, M.CREAM, { ox: cx, oy: 63 }, 0.12);
+  ellipse(g, cx, 46 + dy, 13, 8.5, M.RUFF, { ox: cx, oy: 46 });
+  const shL = [cx - 13, 49 + dy], shR = [cx + 13, 49 + dy];
+  const pL = st.pawL ? O(st.pawL) : [cx - 14, 63 + dy], pR = st.pawR ? O(st.pawR) : [cx + 14, 63 + dy];
+  const edge = (a, b, r0, r1) => limb(g, a[0], a[1], b[0], b[1], r0 + 1, r1 + 1, M.SOLID, {}, 0, INK);
+  const arm = (sh, el, p) => { // koyu çerçeveli kol: gövdeden ayrı okunsun
+    if (el) {
+      edge(sh, el, 4.3, 3.9); edge(el, p, 3.9, 3.4);
+      limb(g, sh[0], sh[1], el[0], el[1], 4.3, 3.9, M.FUR, { kind: 2 }, 0.08);
+      if (st.flex) { const m = [(sh[0] + el[0]) / 2, (sh[1] + el[1]) / 2 - 2.4]; ellipse(g, m[0], m[1], 4.6, 3.6, M.SOLID, {}, 0, INK); ellipse(g, m[0], m[1], 3.8, 2.9, M.FUR, { kind: 2 }, 0.25); }
+      limb(g, el[0], el[1], p[0], p[1], 3.9, 3.4, M.FUR, { kind: 2 }, 0.08);
+    } else { edge(sh, p, 4.3, 3.6); limb(g, sh[0], sh[1], p[0], p[1], 4.3, 3.6, M.FUR, { kind: 2 }, 0.08); }
+  };
+  if (st.prop === 'barbell') barbell(g, pL, pR);
+  arm(shL, st.elbowL ? O(st.elbowL) : null, pL); arm(shR, st.elbowR ? O(st.elbowR) : null, pR);
+  headFront(g, cx + sway * 0.6, 28 + dy - bob * 0.5 + (st.headDy || 0), 0.94, st);
+  if (st.prop === 'db') dumbbell(g, pR[0], pR[1], st.dbVert);
+  if (st.prop === 'db2') { dumbbell(g, pL[0], pL[1], st.dbVert); dumbbell(g, pR[0], pR[1], st.dbVert); }
+  if (st.prop === 'whistle') { line(g, cx - 6, 44 + dy, pR[0] - 2, pR[1] + 2, '#ff5f8f'); line(g, cx + 6, 44 + dy, pR[0] + 1, pR[1] + 2, '#ff5f8f'); whistle(g, pR[0], pR[1]); }
+  for (const p of [pL, pR]) { ellipse(g, p[0], p[1], 4.9, 4.3, M.SOLID, {}, 0, INK); paw(g, p[0], p[1], true, 3.9, 3.3); }
+  if (st.prop === 'whistle') whistle(g, pR[0], pR[1]);
+  if (st.rope != null) rope(g, pL, pR, st.rope);
+  if (st.hoop != null) hoop(g, cx, 60 + dy, st.hoop, 'front');
+  return shade(g, PAT);
+}
+
+// plank / şınav: yandan, gövde düz; st.down 0..1 (şınavda iniş), st.tremble
+export function plank(g, st) {
+  g.clear();
+  const d = st.down || 0, tr = st.tremble && (Math.floor((st.t || 0) * 22) % 2) ? 1 : 0;
+  const by = 66 + d * 4 - tr, bx = 40;
+  limb(g, 22, by + 1, 7, 80, 3.9, 3.4, M.FAR, { kind: 1 }); paw(g, 6, 81.6, false, 4.4, 2.2);
+  limb(g, 24, by + 2, 10, 80.5, 4.1, 3.6, M.FUR, { kind: 1 }); paw(g, 9, 82, true, 4.6, 2.3);
+  tube(g, [18, by - 2], [7, by - 9], [11, by - 24 + tr], 5, 4, M.TAIL);
+  ellipse(g, bx, by, 22, 9.6, M.FUR, { ox: bx, oy: by });
+  limb(g, 53, by + 2, 55, 79.5, 4, 3.6, M.FAR, { kind: 1 }); paw(g, 56, 81.4, false, 4.6, 2.4);
+  limb(g, 57, by + 2, 60, 79.5, 4.2, 3.8, M.FUR, { kind: 1 }); paw(g, 61, 81.6, false, 4.8, 2.5);
+  ellipse(g, 57, by + 1, 7.5, 7.5, M.RUFF, { ox: 57, oy: by + 1 });
+  headSide(g, 66, by - 12 + d * 2, 0.95, st);
+  return shade(g, PAT);
+}
+
+// koşu bandı (yürüme pozunun altına): ph = bant fazı; ekran ve direk kedinin arkasında kalır
+function treadmill(g, ph) {
+  limb(g, 79, 83, 82, 54, 1.5, 1.5, M.PAINT, { kind: K.LILAC }, 0.1);
+  for (let y = 47; y <= 53; y++) for (let x = 78; x <= 86; x++) g.put(x, y, M.PAINT, y === 47 ? 0.85 : 0.5, { kind: K.LILAC });
+  for (let y = 49; y <= 51; y++) for (let x = 80; x <= 84; x++) g.put(x, y, M.PAINT, (x + Math.floor(ph * 3)) % 3 ? 0.55 : 0.9, { kind: K.PINK });
+  for (let x = 3; x <= 85; x++) {
+    g.put(x, 84, M.PAINT, 0.78, { kind: K.LILAC });
+    g.put(x, 85, M.PAINT, (x + Math.floor(ph * 10)) % 5 ? 0.3 : 0.85, { kind: K.SHADES });
+    g.put(x, 86, M.PAINT, 0.35, { kind: K.LILAC });
+  }
 }
 
 export function walk(g, st) {
   g.clear();
   const ph = st.phase || 0, run = !!st.run, t = st.t || 0;
+  if (st.belt != null) treadmill(g, st.belt);
   const amp = run ? 7 : 4.2;
   const bob = run ? Math.round(Math.abs(Math.sin(ph)) * 2) : (Math.sin(ph * 2) > 0 ? 1 : 0);
   const by = (run ? 61 : 59) - bob, bx = 40;
@@ -329,7 +505,7 @@ export function stretch(g, st) {
   ellipse(g, 52, by + 6, 13, 9, M.FUR, { ox: 36, oy: by - 4 });
   limb(g, 58, by + 10, 76, GROUND - 1, 4, 3.6, M.FAR, { kind: 1 }); paw(g, 78, GROUND, false, 5, 2.6);
   limb(g, 60, by + 12, 81, GROUND - 1, 4.1, 3.7, M.FUR, { kind: 1 }); paw(g, 83, GROUND, false, 5, 2.6);
-  headSide(g, 66, 70, 0.9, { ...st, eyes: 'closed', mouth: 'open' });
+  headSide(g, 66, 70, 0.9, { ...st, eyes: st.eyes || 'closed', mouth: st.mouth || 'open' });
   return shade(g, PAT);
 }
 
@@ -346,4 +522,4 @@ export function face(g, st) {
   return shade(g, PAT, { fluffAmount: 0.14 });
 }
 
-export const POSES = { sit, walk, jump, scared, dangle, sleep, eat, squat, stretch };
+export const POSES = { sit, walk, jump, scared, dangle, sleep, eat, squat, stretch, stand, plank };

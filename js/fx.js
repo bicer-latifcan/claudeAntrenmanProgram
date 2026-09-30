@@ -177,7 +177,51 @@ export const ICONS = {
     '................',
     '................',
     '................'] },
+  // Yumak'ın oyuncakları ve efektleri
+  yarn: { p: { k: K, p: '#e988b7', l: '#ffd9ea', d: '#cc6299' }, g: [
+    '..kkkkk..',
+    '.kplpppk.',
+    'kppplpplk',
+    'kpllpplpk',
+    'klppllppk',
+    'kpplppllk',
+    'kplpplpdk',
+    '.kdpplpk.',
+    '..kkkkk..'] },
+  cup: { p: { k: K, w: '#fffaf3', r: '#ff5f8f', g: '#e8d9ce' }, g: [
+    '.kkkkkk...',
+    'kwwwwwwk..',
+    'kwrwrwwkk.',
+    'kwrrrwwk.k',
+    'kwwrwwwk.k',
+    'kwwwwwwkk.',
+    'kgwwwwgk..',
+    '.kkkkkk...'] },
+  bone: { p: { k: K, w: '#fffaf3' }, g: [
+    'k..k.k.k.kk.',
+    'kk.k.k.kkwwk',
+    'kkkkkkkkwkwk',
+    'kk.k.k.kkwwk',
+    'k..k.k.k.kk.'] },
+  speed: { p: { s: '#b9a6c6' }, g: [
+    'sssss...',
+    '........',
+    '..ssssss',
+    '........',
+    '.ssss...'] },
+  check: { p: { k: '#1c5e3b', g: '#3cc97c' }, g: [
+    '.....kk',
+    '....kgk',
+    'k..kgk.',
+    'kkkgk..',
+    '.kgk...',
+    '..k....'] },
 };
+
+// Efektler hangi katmana eklensin? Gün penceresi açıkken (modal) onun içine, yoksa sayfaya.
+let root = null;
+export function fxRoot(el) { root = el || null; }
+const host = () => root || document.body;
 
 export function icon(name, scale = 3) { const d = ICONS[name]; return iconCanvas(d.g, d.p, scale); }
 
@@ -186,7 +230,7 @@ export function burst(name, x, y, { dx = 0, dy = -46, dur = 1100, scale = 3, del
   const c = icon(name, scale); c.className = 'fx pix';
   const w = parseFloat(c.style.width), h = parseFloat(c.style.height);
   c.style.left = (x - w / 2) + 'px'; c.style.top = (y - h / 2) + 'px';
-  document.body.appendChild(c);
+  host().appendChild(c);
   const steps = Math.max(4, Math.round(dur / 90));
   const a = c.animate([
     { transform: 'translate(0,0) scale(.6)', opacity: 0 },
@@ -195,6 +239,20 @@ export function burst(name, x, y, { dx = 0, dy = -46, dur = 1100, scale = 3, del
   ], { duration: dur, delay, easing: `steps(${steps})`, fill: 'backwards' });
   a.onfinish = () => c.remove();
   return c;
+}
+// Uçan piksel yazı: tekrar sayısı, "Priiit!", "Ommm"...
+export function floatText(text, x, y, { dy = -34, dur = 1100, delay = 0, color } = {}) {
+  const s = document.createElement('span'); s.className = 'fx fx-text'; s.textContent = text;
+  if (color) s.style.color = color;
+  s.style.left = Math.max(46, Math.min(innerWidth - 46, x)) + 'px'; s.style.top = y + 'px';
+  host().appendChild(s);
+  const a = s.animate([
+    { transform: 'translate(-50%,-50%) scale(.4)', opacity: 0 },
+    { transform: `translate(-50%,calc(-50% + ${dy * 0.35}px)) scale(1.18)`, opacity: 1, offset: 0.22 },
+    { transform: `translate(-50%,calc(-50% + ${dy * 0.65}px)) scale(1)`, opacity: 1, offset: 0.7 },
+    { transform: `translate(-50%,calc(-50% + ${dy}px)) scale(.92)`, opacity: 0 },
+  ], { duration: dur, delay, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' });
+  a.onfinish = () => s.remove();
 }
 export function hearts(x, y, n = 3) {
   for (let i = 0; i < n; i++) burst('heart', x + (i - (n - 1) / 2) * 16, y, { dx: (i - (n - 1) / 2) * 10, dy: -50 - i * 8, delay: i * 120 });

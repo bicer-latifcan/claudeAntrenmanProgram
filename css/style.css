@@ -155,9 +155,12 @@ body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], bo
 
 /* ---------- Yumak katmanı ---------- */
 .pet-layer { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
-.yumak { position: absolute; left: 0; top: 0; width: 154px; height: 154px; transform-origin: 50% 100%; will-change: transform; }
+.yumak { position: absolute; left: 0; top: 0; width: 154px; height: 154px; transform-origin: 50% 95.45%; will-change: transform; } /* köken = ayak hizası (84/88) */
 .yumak-face { position: absolute; left: 50%; bottom: 0; width: min(92vw, 540px); height: auto; transform: translate(-50%, 110%); will-change: transform; }
 .fx { position: fixed; z-index: 65; pointer-events: none; }
+.fx-text { font: 700 21px/1 "Pixelify Sans", system-ui, sans-serif; color: #ff5f8f; white-space: nowrap; letter-spacing: .5px;
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 2px 2px var(--ink), -2px 2px var(--ink), 2px -2px var(--ink), -2px -2px var(--ink), 0 5px 0 rgba(61, 42, 63, .22); }
+.prop { position: fixed; left: 0; top: 0; z-index: 64; pointer-events: none; will-change: transform, opacity; }
 .bubble {
   position: fixed; z-index: 70; max-width: min(320px, 80vw); background: var(--paper); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
   padding: 11px 14px; font: 500 17px/1.35 var(--font-pixel); pointer-events: none; opacity: 0; transform: translateY(6px);

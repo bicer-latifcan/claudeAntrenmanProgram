@@ -1,5 +1,5 @@
 // Uygulama: takvim, gün ayrıntısı, ilerleme, gökyüzü. Yumak'ı başlatır.
-import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YUMAK_SOZLER, DAMBIL_MAKS } from './program.js';
+import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YUMAK_SOZLER, ETKINLIK_SOZLER, DAMBIL_MAKS } from './program.js';
 import { icon, drawHomeItems, hearts, sparkles, checkCanvas } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
@@ -454,7 +454,7 @@ document.getElementById('settingsBtn').addEventListener('click', renderCloud);
   if (await buluttanOku()) { renderAll(); syncSound(); }
   renderCloud(); renderIzle();
   // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
-  initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, drawHomeItems, todayIndex, dayInfo });
+  initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo });
   if (IZLE) setInterval(async () => { if (await buluttanOku()) renderAll(); renderIzle(); }, 60000);
 })();
 document.getElementById('izleRefresh')?.addEventListener('click', async (e) => { e.target.textContent = 'Yenileniyor…'; if (await buluttanOku()) renderAll(); renderIzle(); e.target.textContent = 'Yenile'; });

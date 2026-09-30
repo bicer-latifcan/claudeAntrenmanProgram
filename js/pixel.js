@@ -22,9 +22,19 @@ export const RAMP = {
   metal:  ['#2a2733', '#4a4658', '#6f6a82', '#9a95ae', '#c9c5d9'],
   wood:   ['#6b4430', '#8a5a3c', '#a8744f', '#c99269', '#e3b58c'],
   mat:    ['#b56ab5', '#cc86cc', '#e0a3e0', '#efc3ef', '#f8def8'],
+  // Yumak'ın aksesuarları
+  water:  ['#2f6fa8', '#4a91cc', '#6fb2e6', '#9fd0f5', '#d2ecff'],
+  yarn:   ['#a8457a', '#cc6299', '#e988b7', '#f6b1d1', '#ffd9ea'],
+  card:   ['#7d5028', '#a0703c', '#bf8d55', '#d9ab76', '#edc99a'],
+  shades: ['#0e0c13', '#1b1822', '#2a2634', '#3c3748', '#575068'],
+  lilac:  ['#6f58b8', '#8a73d1', '#a792e6', '#c5b6f3', '#e2d9fb'],
+  fish:   ['#4f7194', '#6b8fb3', '#8badcf', '#b1cbe6', '#d9e8f6'],
 };
 // M.PAINT pikselleri, desen türü (kind) ile bu rampalardan birini kullanır
-export const PAINT = ['cream', 'top', 'shorts', 'shoe', 'band', 'metal', 'wood', 'mat', 'cream', 'pink', 'ginger', 'tabby'];
+export const PAINT = ['cream', 'top', 'shorts', 'shoe', 'band', 'metal', 'wood', 'mat', 'cream', 'pink', 'ginger', 'tabby',
+  'water', 'yarn', 'card', 'shades', 'lilac', 'fish'];
+export const K = { TOP: 1, SHORTS: 2, SHOE: 3, BAND: 4, METAL: 5, WOOD: 6, MAT: 7, CREAM: 8, PINK: 9, GINGER: 10, TABBY: 11,
+  WATER: 12, YARN: 13, CARD: 14, SHADES: 15, LILAC: 16, FISH: 17 };
 export const INK = '#271a1f';      // dış çizgi
 export const WHITE = '#fff8f0';
 
