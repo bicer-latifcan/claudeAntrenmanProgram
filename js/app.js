@@ -10,6 +10,8 @@ import * as bulut from './bulut.js';
 const KEY = 'yumak-8-hafta-v1';
 const LINK = bulut.linkModu();
 const IZLE = LINK.izle;          // izleme modu: buluttaki ilerlemeyi gösterir, hiçbir şey kaydetmez
+// ana ekrana eklenmiş uygulama olarak mı açıldı? (iPhone'da hafızası Safari'den ayrıdır)
+const UYGULAMA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const state = load();
 function load() {
   const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, sound: false, zaman: 0 };
@@ -408,7 +410,9 @@ function renderCloud() {
     return;
   }
   if (!bulutKod) {
-    st.textContent = 'Kapalı. Kişisel linkin varsa aşağıya yapıştır; yoksa yeni bir yedek aç. Telefon değişse bile ilerleme linkle geri gelir.';
+    st.textContent = UYGULAMA
+      ? 'Uygulamaya hoş geldin! Uygulama Safari’den ayrı bir hafıza kullanır: kişisel linkini aşağıya yapıştır, ilerlemen buluttan gelsin. Linkin yoksa yeni bir yedek aç.'
+      : 'Kapalı. Kişisel linkin varsa aşağıya yapıştır; yoksa yeni bir yedek aç. Telefon değişse bile ilerleme linkle geri gelir.';
     const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Kişisel linki yapıştır'; inp.className = 'kg'; inp.style.width = '100%'; inp.id = 'cloudLinkInput';
     act.append(inp);
     btn('Bağlan', async () => {
@@ -459,8 +463,29 @@ document.getElementById('settingsBtn').addEventListener('click', renderCloud);
   // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
   initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo });
   if (IZLE) setInterval(async () => { if (await buluttanOku()) renderAll(); renderIzle(); }, 60000);
+  // ana ekran uygulaması ilk kez açıldıysa: buluta bağlanma bölümünü göster (bir kez)
+  if (UYGULAMA && !IZLE && bulut.hazir() && !bulutKod) {
+    try {
+      if (!localStorage.getItem('yumak-uygulama-karsilandi')) {
+        localStorage.setItem('yumak-uygulama-karsilandi', '1');
+        setTimeout(() => { document.getElementById('settingsBtn').click(); document.getElementById('cloudBox')?.scrollIntoView({ block: 'center' }); }, 700);
+      }
+    } catch { /* hafıza kapalı */ }
+  }
 })();
 document.getElementById('izleRefresh')?.addEventListener('click', async (e) => { e.target.textContent = 'Yenileniyor…'; if (await buluttanOku()) renderAll(); renderIzle(); e.target.textContent = 'Yenile'; });
 document.getElementById('izleExit')?.addEventListener('click', () => { bulut.izlemedenCik(); location.reload(); });
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-if (matchMedia('(display-mode: standalone)').matches) kaliciIste();
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // uygulama arka planda günlerce açık kalabilir: öne gelince yeni sürüm var mı bak, varsa bir sonraki dönüşte yükle
+  const vardi = !!navigator.serviceWorker.controller;
+  let yeniSurum = false, sonKontrol = Date.now();
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (vardi) yeniSurum = true; });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (yeniSurum && !document.querySelector('dialog[open]')) { location.reload(); return; }
+      if (Date.now() - sonKontrol > 30 * 60e3) { sonKontrol = Date.now(); reg.update().catch(() => {}); }
+    });
+  }).catch(() => {});
+}
+if (UYGULAMA) kaliciIste();

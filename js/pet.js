@@ -47,7 +47,11 @@ export function initPet(app) {
     act: null, micro: null,
   };
   const scale = () => cv.offsetWidth / Y.W;
-  const floorY = () => innerHeight - 8;
+  // zemin: iPhone'da alttaki ev çizgisinin (home indicator) üstünde kalsın
+  let safeB = 0;
+  const readSafe = () => { const h = document.querySelector('.home'); safeB = h ? parseFloat(getComputedStyle(h).paddingBottom) || 0 : 0; };
+  readSafe();
+  const floorY = () => innerHeight - 8 - safeB;
   cat.y = floorY();
 
   /* ---------- yüzeyler ---------- */
@@ -849,7 +853,7 @@ export function initPet(app) {
     requestAnimationFrame(loop);
   }
   setInterval(() => app.save(), 8000);
-  addEventListener('resize', () => { cat.x = clamp(cat.x, 40, innerWidth - 40); if (!cat.surf) cat.y = floorY(); });
+  addEventListener('resize', () => { readSafe(); cat.x = clamp(cat.x, 40, innerWidth - 40); if (!cat.surf) cat.y = floorY(); });
 
   refreshItems();
   requestAnimationFrame(loop);

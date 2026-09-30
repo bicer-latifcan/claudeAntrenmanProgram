@@ -1,6 +1,6 @@
 // Uygulama modu: site bir kez açıldıktan sonra internetsiz de çalışsın.
 // Önce önbellekten açar, arkada yeni sürümü indirir (bir sonraki açılışta güncel olur).
-const CACHE = 'yumak-v7';
+const CACHE = 'yumak-v8';
 const CORE = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/app.js', './js/pixel.js', './js/yumak-art.js', './js/pet.js', './js/fx.js', './js/tarcin.js', './js/program.js', './js/bulut.js',
