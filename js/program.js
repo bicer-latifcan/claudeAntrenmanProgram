@@ -2,6 +2,8 @@
 //  PROGRAM VERİSİ — değişiklikler sadece bu dosyada yapılır.
 //  Hareket eklemek/çıkarmak, set-tekrar, günler, video linkleri
 //  hepsi burada. Site bu dosyayı okuyup kendini çizer.
+//  iPhone widget'ı (widget/yumak-widget.js) da bu dosyayı okur:
+//  "export" sözcükleri silinip çalıştırılır, o yüzden buraya import eklenmez.
 // ============================================================
 
 export const AYARLAR = {
