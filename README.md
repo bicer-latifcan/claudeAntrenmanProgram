@@ -2,7 +2,7 @@
 
 Tek dambılla evde yapılan 8 haftalık antrenman programı. Koç: Yumak (tombul, kaplumbağa kabuğu desenli bir kedi). Hareketleri Tarçın gösteriyor.
 
-Site: https://bicer-latifcan.github.io/claudeAntrenmanProgrami/
+Site: https://bicer-latifcan.github.io/claudeAntrenmanProgram/
 
 ## Neler var
 
