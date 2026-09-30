@@ -1,6 +1,6 @@
 // Uygulama: takvim, gün ayrıntısı, ilerleme, gökyüzü. Yumak'ı başlatır.
-import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YUMAK_SOZLER } from './program.js';
-import { icon, drawHomeItems, hearts, sparkles } from './fx.js';
+import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YUMAK_SOZLER, DAMBIL_MAKS } from './program.js';
+import { icon, drawHomeItems, hearts, sparkles, checkCanvas } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
 import { mountAnim } from './tarcin.js';
@@ -10,7 +10,7 @@ import * as bulut from './bulut.js';
 const KEY = 'yumak-8-hafta-v1';
 const state = load();
 function load() {
-  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, walk: {}, sound: false, zaman: 0 };
+  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, sound: false, zaman: 0 };
   try { return { ...base, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return base; }
 }
 const writeLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* gizli pencere vb. */ } };
@@ -30,7 +30,7 @@ async function buluttanOku() { // açılışta: bulut daha yeniyse onu al, deği
   try {
     const c = await bulut.indir(bulutKod);
     if (c && c.zaman > (state.zaman || 0)) {
-      for (const k of ['start', 'done', 'sets', 'kg', 'walk', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
+      for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
       writeLocal(); bulutDurum = 'ok'; bulutSaat = new Date(c.zaman); return true;
     }
     await bulut.yukle(bulutKod, state); bulutDurum = 'ok'; bulutSaat = new Date();
@@ -147,7 +147,8 @@ function renderHero() {
     el.className = `today ${i.cls}`;
     el.innerHTML = `<span class="t-label">Bugün · ${GUN[t.d]} ${dt.getDate()} ${AY[dt.getMonth()]} · Hafta ${t.w + 1}</span>
       <span class="t-title">${i.baslik}</span>
-      <div class="row"><button class="pbtn primary" data-open="${t.w},${t.d}">${i.tur === 'dinlenme' ? 'Dinlenme gününü aç' : 'Antrenmanı aç'}</button>${done ? '<span class="chip">Tamamlandı ✓</span>' : ''}</div>`;
+      <div class="row"><button class="pbtn primary" data-open="${t.w},${t.d}">${i.tur === 'dinlenme' ? 'Dinlenme gününü aç' : 'Antrenmanı aç'}</button>${done ? '<span class="chip done-chip" id="todayDone">Bugün tamam!</span>' : ''}</div>`;
+    if (done) document.getElementById('todayDone').prepend(checkCanvas(26));
   }
   const moons = document.getElementById('moons'); moons.innerHTML = '';
   for (let w = 0; w < AYARLAR.haftaSayisi; w++) {
@@ -185,12 +186,13 @@ function renderCalendar() {
       const ic = icon(i.icon, 2); ic.classList.add('d-icon'); ic.style.width = ''; ic.style.height = '';
       const lb = document.createElement('span'); lb.className = 'd-label'; lb.textContent = i.kisa;
       b.append(top, ic, lb);
-      if (state.done[k]) { const st = icon('paw', 3); st.classList.add('stamp'); st.style.width = ''; st.style.height = ''; b.append(st); }
+      if (state.done[k]) { const ck = checkCanvas(62); ck.classList.add('stamp'); if (justDone === k) ck.classList.add('pop'); b.append(ck); }
       b.addEventListener('click', () => openDay(w, d));
       row.append(b);
     }
     cal.append(row);
   }
+  justDone = null;
 }
 
 /* ---------- gün ayrıntısı ---------- */
@@ -203,22 +205,47 @@ function videoBlock(h) {
   return `<div class="video"><button type="button" class="lite-yt" data-yt="${v.id}" data-start="${v.bas || 0}" aria-label="${h.ad} videosunu oynat" style="background-image:url('https://i.ytimg.com/vi/${v.id}/hqdefault.jpg')"></button>
     <a href="https://www.youtube.com/watch?v=${v.id}${t}" target="_blank" rel="noopener">YouTube'da aç · ${v.kanal || ''}${v.dil === 'en' ? ' (İngilizce)' : ''}</a></div>`;
 }
+// bu hareket için daha önceki bir günde yazılan en son ağırlık
+function lastKg(h, dayK) {
+  const [, w, d] = dayK.match(/h(\d+)g(\d+)/).map(Number);
+  for (let i = (w - 1) * 7 + (d - 1) - 1; i >= 0; i--) {
+    const v = state.kgGun[`h${Math.floor(i / 7) + 1}g${(i % 7) + 1}:${h}`];
+    if (v != null && v !== '') return v;
+  }
+  return null;
+}
 function exCard(item, dayK, idx, compact = false) {
-  const h = HAREKETLER[item.h];
+  const h = HAREKETLER[item.h], ag = h.agirlik;
   const sets = item.set ? Array.from({ length: item.set }, (_, s) => {
     const on = state.sets[`${dayK}:${item.h}`]?.[s];
-    return `<button type="button" class="setbox" data-set="${item.h}" data-i="${s}" aria-pressed="${on ? 'true' : 'false'}" aria-label="Set ${s + 1}">${s + 1}</button>`;
+    return `<button type="button" class="setbox" data-set="${item.h}" data-i="${s}" aria-pressed="${on ? 'true' : 'false'}" aria-label="${s + 1}. set">${s + 1}</button>`;
   }).join('') : '';
-  const kg = item.set ? `<label>kg <input class="kg" type="number" min="0" max="12" step="0.5" inputmode="decimal" data-kg="${item.h}" value="${state.kg[item.h] ?? ''}" aria-label="${h.ad} için kullandığın ağırlık"></label>` : '';
+  const weighted = item.set && ag && ag.kg;
+  const today = state.kgGun[`${dayK}:${item.h}`], prev = weighted ? lastKg(item.h, dayK) : null;
+  const top = String(item.tekrar).split('–').pop();
+  const kgInput = weighted ? `<label class="kg-field">Bugün kaç kg?
+      <input class="kg" type="number" min="0" max="${DAMBIL_MAKS}" step="0.5" inputmode="decimal" data-kg="${item.h}" value="${today ?? ''}" placeholder="${prev ?? ag.kg.split('–')[0]}" aria-label="${h.ad} için bugün kullandığın ağırlık (kg)">
+    </label>` : '';
+  const doseChips = item.set
+    ? `<span class="chip strong">${item.set} set</span><span class="chip strong">${item.tekrar} tekrar</span>${item.not ? `<span class="chip">${item.not}</span>` : ''}`
+      + (weighted ? `<span class="chip kg-chip">Önerilen: ${ag.kg}</span>` : `<span class="chip">Ağırlıksız</span>`)
+    : ((item.sure || h.sure) ? `<span class="chip strong">${item.sure || h.sure}</span>` : '');
   return `<article class="ex${compact ? ' compact' : ''}">
     <div class="stage"><canvas class="pix" data-anim="${h.anim}" width="80" height="80" aria-label="${h.ad} animasyonu" role="img"></canvas></div>
     <div>
       <h3>${idx != null ? `${idx}. ` : ''}${h.ad}</h3>
-      <div class="dose">${item.set ? `<span class="chip">${item.set} × ${item.tekrar}</span>` : `<span class="chip">${h.sure || ''}</span>`}${item.not ? `<span class="chip">${item.not}</span>` : ''}<span class="chip">${h.kaslar}</span></div>
+      <div class="dose">${doseChips}<span class="chip">${h.kaslar}</span></div>
       <ol>${h.adimlar.map(a => `<li>${a}</li>`).join('')}</ol>
       <span class="tip">İpucu: ${h.ipucu}</span>
       ${h.dikkat ? `<p class="warn">Dikkat: ${h.dikkat}</p>` : ''}
-      ${item.set ? `<div class="sets"><span>Setler:</span>${sets}${kg}</div>` : ''}
+      ${ag?.not ? `<p class="warn soft">Ağırlık: ${ag.not}</p>` : ''}
+      ${item.set ? `<div class="tracker">
+        <p class="tr-help">Her seti bitirince kutusuna dokun.${weighted ? ' Kullandığın ağırlığı yaz; bir dahaki sefere burada görürsün.' : ''}</p>
+        <div class="sets"><span>Setler:</span>${sets}${kgInput}</div>
+        ${weighted ? `<p class="tr-last" data-last="${item.h}">${prev != null
+          ? `Geçen sefer: <b>${prev} kg</b>. Tüm setlerde ${top} tekrara ulaştıysan bugün biraz artırabilirsin.`
+          : `İlk kez yapıyorsun: ${ag.kg} ile başla, setin sonunda 2–3 tekrar daha yapabilecek gibi olmalısın.`}</p>` : ''}
+      </div>` : ''}
       ${compact ? (h.video ? `<div class="video"><a href="https://www.youtube.com/watch?v=${h.video.id}${h.video.bas ? `&t=${h.video.bas}s` : ''}" target="_blank" rel="noopener">Videoyu YouTube'da izle${h.video.dil === 'en' ? ' (İngilizce)' : ''}</a></div>` : '') : videoBlock(h)}
     </div>
   </article>`;
@@ -233,7 +260,7 @@ function openDay(w, d) {
     html += `<p>Önce 5 dk ısın, sonra hareketleri sırayla yap. Setler arası ${AYARLAR.dinlenmeSn} sn dinlen. Her setin sonunda "2–3 tekrar daha yapabilirdim" demelisin.</p>`;
     html += `<h3 class="sec-title">Isınma · 5 dk</h3><div class="ex-list">${ISINMA.map(h => exCard({ h }, k, null, true)).join('')}</div>`;
     html += `<h3 class="sec-title">${a.ad} · yaklaşık ${a.dk} dk</h3><div class="ex-list">${a.liste.map((it, n) => exCard(it, k, n + 1)).join('')}</div>`;
-    html += `<h3 class="sec-title">Yemekten sonra · ${i.yemek} dk</h3><div class="ex-list">${exCard({ h: 'tempolu-yuruyus' }, k, null, true)}</div>
+    html += `<h3 class="sec-title">Yemekten sonra · ${i.yemek} dk</h3><div class="ex-list">${exCard({ h: 'tempolu-yuruyus', sure: `${i.yemek} dk` }, k, null, true)}</div>
       <label class="check"><input type="checkbox" data-walk="${k}" ${state.walk[k] ? 'checked' : ''}> Yemekten sonra ${i.yemek} dk yürüdüm</label>`;
   } else if (i.tur === 'dinlenme') {
     html += `<p>Bugün dinlen. İstersen hafif esneme ya da kısa, sakin bir yürüyüş yapabilirsin. Kaslar dinlenirken güçlenir.</p>
@@ -241,22 +268,44 @@ function openDay(w, d) {
   } else {
     const h = i.tur === 'aralikli' ? 'aralikli-yuruyus' : 'tempolu-yuruyus';
     html += `<p>${i.tur === 'aralikli' ? `Yürüyüşün ortasında ${i.tur_} tur yap: 30 sn tempolu, 90 sn yavaş.` : `Toplam ${i.dk} dk. Bölebilirsin: en az 10 dakikalık parçalar da sayılır.`}</p>`;
-    html += `<div class="ex-list">${exCard({ h }, k, null)}</div>`;
+    html += `<div class="ex-list">${exCard({ h, sure: `${i.dk} dk` }, k, null)}</div>`;
   }
-  html += `<div class="done-row"><label class="check"><input type="checkbox" id="dayDone" ${state.done[k] ? 'checked' : ''}> Bu günü tamamladım</label><button type="button" class="pbtn small" id="dayClose2">Takvime dön</button></div>`;
+  html += `<div class="done-row"><button type="button" class="done-btn" id="dayDone" aria-pressed="${state.done[k] ? 'true' : 'false'}"></button><button type="button" class="pbtn small" id="dayClose2">Takvime dön</button></div>`;
   const body = document.getElementById('dayBody'); body.innerHTML = html;
   body.querySelectorAll('canvas[data-anim]').forEach(c => mountAnim(c, c.dataset.anim));
+  syncDoneBtn();
   if (!sheet.open) sheet.showModal();
   sheet.scrollTop = 0;
   window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'day-open', w, d } }));
 }
+function syncDoneBtn() {
+  const b = document.getElementById('dayDone'); if (!b) return;
+  const done = !!state.done[openKey];
+  b.setAttribute('aria-pressed', done ? 'true' : 'false');
+  b.innerHTML = '';
+  if (done) { b.append(checkCanvas(40), Object.assign(document.createElement('span'), { innerHTML: 'Tamamlandı!<small>Geri almak için tekrar dokun</small>' })); }
+  else b.append(Object.assign(document.createElement('span'), { textContent: 'Bugünü bitirdim!' }));
+}
+let justDone = null;
 sheet.addEventListener('click', (e) => {
   const yt = e.target.closest('.lite-yt');
-  if (yt && !yt.querySelector('iframe')) {
+  if (yt) { // kapak resmini gerçek oynatıcıyla değiştir (üstünde buton kalmasın)
+    const frame = document.createElement('div'); frame.className = 'yt-frame';
     const f = document.createElement('iframe');
     f.src = `https://www.youtube-nocookie.com/embed/${yt.dataset.yt}?autoplay=1&rel=0&playsinline=1${+yt.dataset.start ? `&start=${yt.dataset.start}` : ''}`;
-    f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.allowFullscreen = true; f.title = yt.getAttribute('aria-label');
-    yt.append(f); return;
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; f.title = yt.getAttribute('aria-label');
+    frame.append(f); yt.replaceWith(frame); return;
+  }
+  const db = e.target.closest('#dayDone');
+  if (db) {
+    const now = !state.done[openKey]; state.done[openKey] = now; save(); syncDoneBtn();
+    if (now) {
+      kaliciIste(); justDone = openKey;
+      const r = db.getBoundingClientRect(); sparkles(r.left + 30, r.top + 10, 6); hearts(r.left + r.width / 2, r.top, 3);
+      window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'day-done' } }));
+    }
+    renderCalendar(); renderHero();
+    return;
   }
   const sb = e.target.closest('.setbox');
   if (sb) {
@@ -271,17 +320,18 @@ sheet.addEventListener('click', (e) => {
 });
 sheet.addEventListener('change', (e) => {
   const el = e.target;
-  if (el.dataset.kg) { state.kg[el.dataset.kg] = el.value; save(); }
-  if (el.dataset.walk) { state.walk[el.dataset.walk] = el.checked; save(); }
-  if (el.id === 'dayDone') {
-    state.done[openKey] = el.checked; save();
-    if (el.checked) {
-      kaliciIste();
-      const r = el.getBoundingClientRect(); sparkles(r.left + 12, r.top); hearts(r.left + 60, r.top, 3);
-      window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'day-done' } }));
-    }
-    renderCalendar(); renderHero();
+  if (el.dataset.kg) { // 0–12 kg arası, yarım kiloluk adımlar
+    const k = `${openKey}:${el.dataset.kg}`, note = el.closest('.tracker')?.querySelector('.tr-last');
+    let v = parseFloat(String(el.value).replace(',', '.'));
+    if (Number.isNaN(v)) { delete state.kgGun[k]; el.value = ''; save(); return; }
+    let msg = '';
+    if (v > DAMBIL_MAKS) { v = DAMBIL_MAKS; msg = `Dambılın en fazla ${DAMBIL_MAKS} kg, ${DAMBIL_MAKS} olarak yazdım.`; }
+    if (v < 0) v = 0;
+    v = Math.round(v * 2) / 2; el.value = v;
+    state.kgGun[k] = v; state.kg[el.dataset.kg] = v; save();
+    if (note) note.innerHTML = msg || `Kaydedildi: <b>${v} kg</b>. Bir dahaki sefere burada görünecek.`;
   }
+  if (el.dataset.walk) { state.walk[el.dataset.walk] = el.checked; save(); }
 });
 document.getElementById('dayClose').addEventListener('click', () => sheet.close());
 sheet.addEventListener('close', () => { document.getElementById('dayBody').innerHTML = ''; window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'day-close' } })); });
@@ -315,7 +365,7 @@ document.getElementById('loadBackup').addEventListener('click', () => {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('backupInput').value.trim()))));
     if (!data || typeof data !== 'object' || !data.start) throw new Error('bad');
-    for (const k of ['start', 'done', 'sets', 'kg', 'walk', 'sound', 'pet']) if (k in data) state[k] = data[k];
+    for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'sound', 'pet']) if (k in data) state[k] = data[k];
     save(); msg('Yüklendi! Sayfa yenileniyor…'); setTimeout(() => location.reload(), 900);
   } catch { msg('Bu kod okunamadı. Tamamını kopyaladığından emin ol.'); }
 });

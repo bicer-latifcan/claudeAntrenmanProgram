@@ -1,5 +1,30 @@
 // Piksel simgeler ve uçuşan efektler (kalp, yıldız, ünlem...)
-import { iconCanvas } from './pixel.js';
+import { iconCanvas, Grid, M, limb, line, shade, paint } from './pixel.js';
+
+// Koca yeşil tik: kalın piksel çizgi, koyu yeşil kenar, beyaz çıkartma çerçevesi
+let checkCache = null;
+export function checkCanvas(size = 48) {
+  if (!checkCache) {
+    const g = new Grid(20, 17);
+    limb(g, 4, 9, 8, 13, 2.2, 2.2, M.SOLID, {}, 0, '#3cc97c');
+    limb(g, 8, 13, 16, 4, 2.2, 2.2, M.SOLID, {}, 0, '#3cc97c');
+    line(g, 4, 8, 7, 11, '#b8f5d3'); line(g, 8, 11, 15, 3, '#b8f5d3');
+    shade(g, {}, { fluff: false, ink: '#1c5e3b' });
+    // beyaz çıkartma kenarı: dış çizginin bir piksel dışı
+    const ring = [];
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) {
+      const i = y * g.w + x; if (g.col[i]) continue;
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx, Y = y + dy; return X >= 0 && Y >= 0 && X < g.w && Y < g.h && g.col[Y * g.w + X] === '#1c5e3b'; });
+      if (nb) ring.push(i);
+    }
+    for (const i of ring) g.col[i] = '#fffaf3';
+    checkCache = g;
+  }
+  const c = document.createElement('canvas'); c.className = 'pix check-icon';
+  paint(c, checkCache);
+  c.style.width = size + 'px'; c.style.height = 'auto';
+  return c;
+}
 
 const K = '#3d2a3f';
 export const ICONS = {

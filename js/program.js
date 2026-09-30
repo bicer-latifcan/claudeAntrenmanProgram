@@ -166,6 +166,29 @@ export const VIDEOLAR = {
 };
 for (const [k, v] of Object.entries(VIDEOLAR)) if (HAREKETLER[k]) HAREKETLER[k].video = v;
 
+// Önerilen başlangıç ağırlıkları (tek ayarlanabilir dambıl, en fazla 12 kg).
+// Doğru ağırlık: setin sonunda "2–3 tekrar daha yapabilirdim" dedirten ağırlık.
+// kg: null → ağırlıksız hareket.
+export const AGIRLIKLAR = {
+  'goblet-squat':        { kg: '6–8 kg' },
+  'tek-kol-row':         { kg: '6–8 kg' },
+  'egimli-sinav':        { kg: null },
+  'romanian-deadlift':   { kg: '6–10 kg' },
+  'kalca-koprusu':       { kg: '6–10 kg', not: 'Dambıl kalçanın üstünde. Zor gelirse önce ağırlıksız.' },
+  'dead-bug':            { kg: null },
+  'geriye-lunge':        { kg: '4–6 kg', not: 'İlk 2 hafta ağırlıksız, sonra dambıl göğüste.' },
+  'tek-kol-omuz-press':  { kg: '3–5 kg' },
+  'sumo-deadlift':       { kg: '8–10 kg' },
+  'bolunmus-durus-row':  { kg: '6–8 kg' },
+  'tek-kol-yerde-press': { kg: '4–6 kg' },
+  'bird-dog':            { kg: null },
+  'bulgar-split-squat':  { kg: '4–6 kg', not: 'Önce ağırlıksız dene.' },
+  'diz-ustu-sinav':      { kg: null },
+  'tek-bacak-kopru':     { kg: null },
+};
+export const DAMBIL_MAKS = 12;
+for (const [k, v] of Object.entries(AGIRLIKLAR)) if (HAREKETLER[k]) HAREKETLER[k].agirlik = v;
+
 // Antrenmanlar (A/B: 1–4. hafta, A2/B2: 5–8. hafta)
 export const ANTRENMANLAR = {
   A: {
