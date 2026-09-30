@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Yumak widget'ı</title>
+<meta name="description" content="iPhone ana ekranına ve kilit ekranına Yumak widget'ı: bugünün antrenmanı, haftanın ilerlemesi.">
+<meta name="theme-color" content="#c9b8ff">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Pixelify+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { padding: 0 0 calc(32px + env(safe-area-inset-bottom, 0px)); }
+  .wrap { width: min(720px, calc(100% - 28px)); margin: 0 auto; padding-top: calc(24px + env(safe-area-inset-top, 0px)); display: grid; gap: 20px; }
+  .back { font: 600 15px/1 var(--font-pixel); color: var(--ink); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+  h1 { font: 700 clamp(30px, 7vw, 44px)/1.05 var(--font-pixel); margin: 6px 0 8px; }
+  .lead { margin: 0; color: var(--ink-soft); }
+  /* widget örneği: iPhone'daki gibi yuvarlak yazı */
+  .mocks { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: center; padding: 8px 0 4px; }
+  .mock { border-radius: 22px; background: linear-gradient(180deg, #c9b8ff 0%, #f7c6e0 55%, #ffe3cb 100%); box-shadow: 0 8px 22px rgba(61, 42, 63, .22), inset 0 0 0 1px rgba(255,255,255,.35);
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif; color: var(--ink); display: flex; box-sizing: border-box; line-height: 1.2; }
+  .mock img { image-rendering: auto; flex: none; }
+  .mock.md { width: min(338px, 100%); height: 158px; padding: 12px 14px 12px 10px; align-items: center; gap: 6px; }
+  .mock.sm { width: 158px; height: 158px; padding: 10px 12px; flex-direction: column; }
+  .m-ust { font-weight: 800; font-size: 10px; letter-spacing: .02em; color: var(--ink-soft); }
+  .m-cip { display: inline-block; font-weight: 800; font-size: 16px; background: #ffc4d8; border: 2px solid var(--ink); border-radius: 7px; padding: 1px 7px; margin: 3px 0; }
+  .m-alt { font-weight: 600; font-size: 12px; }
+  .m-dots { display: flex; gap: 4px; align-items: center; margin: 5px 0 6px; font-weight: 800; font-size: 11px; color: var(--ink-soft); }
+  .m-dots i { width: 12px; height: 12px; border-radius: 50%; border: 1.6px solid rgba(61, 42, 63, .45); box-sizing: border-box; display: inline-grid; place-items: center; font-style: normal; font-size: 8px; color: #fff; }
+  .m-dots i.ok { background: #2fb56d; border-color: #2fb56d; }
+  .m-dots i.now { border-color: #e0507c; border-width: 2px; }
+  .m-dots i.now::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #e0507c; }
+  .m-dots i.moon { border: 0; color: #8f7ad8; font-size: 13px; }
+  .m-balon { background: var(--paper); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; font-weight: 600; font-size: 11px; line-height: 1.25; }
+  .sm .top { display: flex; justify-content: space-between; align-items: center; }
+  .sm .chip-h { font-weight: 800; font-size: 9px; background: #ffc4d8; border: 2px solid var(--ink); border-radius: 7px; padding: 1px 6px; }
+  .sm .t { font-weight: 800; font-size: 14px; text-align: center; margin-top: 2px; }
+  .sm .m-dots { justify-content: center; gap: 3px; margin: 4px 0 0; }
+  .sm .m-dots i { width: 10px; height: 10px; }
+  .steps { counter-reset: s; list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .steps > li { counter-increment: s; display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+  .steps > li::before { content: counter(s); font: 700 20px/38px var(--font-pixel); text-align: center; width: 38px; height: 38px; background: var(--pink); color: #fff; border: 3px solid var(--ink); text-shadow: 1px 1px 0 var(--ink); box-sizing: border-box; }
+  .steps b { color: #c2335f; }
+  .row-btn { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  details { border: 3px dashed #e8d9ce; padding: 10px 12px; }
+  summary { font: 600 15px/1.3 var(--font-pixel); cursor: pointer; }
+  pre { white-space: pre-wrap; word-break: break-word; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--paper-2); padding: 10px; margin: 10px 0 0; border: 2px solid var(--ink); max-height: 320px; overflow: auto; }
+  .note { font-size: 15px; color: var(--ink-soft); margin: 0; }
+  .sec { font: 700 20px/1.2 var(--font-pixel); margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<main class="wrap">
+  <div>
+    <a class="back" href="../">← Takvime dön</a>
+    <h1>Yumak widget'ı</h1>
+    <p class="lead">iPhone ana ekranında bugünün antrenmanı, haftanın ilerlemesi ve Yumak. İstersen kilit ekranına da eklenir. Ücretsiz <b>Scriptable</b> uygulamasıyla çalışır.</p>
+  </div>
+
+  <div class="mocks" aria-label="Widget örneği">
+    <div class="mock md">
+      <img src="kuvvet.png" alt="Dambıl kaldıran Yumak" width="112" height="112">
+      <div>
+        <div class="m-ust">BUGÜN · ÇARŞAMBA 7 EKİM</div>
+        <div class="m-cip">Kuvvet B</div>
+        <div class="m-alt">+ 10 dk yürüyüş</div>
+        <div class="m-dots"><i class="ok">✓</i><i class="ok">✓</i><i class="now"></i><i></i><i></i><i></i><i class="moon">☾</i>&nbsp;H1</div>
+        <div class="m-balon">Dambılı hazırla! Bugün kaslar konuşacak.</div>
+      </div>
+    </div>
+    <div class="mock sm">
+      <div class="top"><span class="m-ust">BUGÜN</span><span class="chip-h">H1</span></div>
+      <img src="kuvvet.png" alt="" width="62" height="62" style="align-self:center">
+      <div class="t">Kuvvet B</div>
+      <div class="m-dots"><i class="ok">✓</i><i class="ok">✓</i><i class="now"></i><i></i><i></i><i></i><i class="moon">☾</i></div>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2 class="sec">Kurulum (5 dakika)</h2>
+    <ol class="steps">
+      <li><div>App Store'dan ücretsiz <b>Scriptable</b> uygulamasını indir.
+        <div class="row-btn"><a class="pbtn small" href="https://apps.apple.com/app/scriptable/id1405459188" rel="noopener">App Store'da aç</a></div></div></li>
+      <li><div><b>Kurulum betiğini kopyala.</b> Bu küçük betik, asıl widget'ı her seferinde siteden alır; yenilikler kendiliğinden gelir.
+        <div class="row-btn"><button class="pbtn primary small" type="button" id="kopyala">Betiği kopyala</button></div></div></li>
+      <li><div>Scriptable'ı aç, sağ üstteki <b>+</b> ile yeni betik aç ve <b>yapıştır</b>. Üstteki adı <b>Yumak</b> yap, <b>Bitti</b>'ye bas.</div></li>
+      <li><div><b>Yumak</b> betiğine bir kez dokun. Kişisel linkini sorar: sitede <b>Başlangıç → Bulut yedeği → Kişisel linki kopyala</b>, sonra buraya yapıştırıp <b>Kaydet</b>. (Link kopyalıysa kendisi doldurur.)</div></li>
+      <li><div>Ana ekranda boş bir yere basılı tut → sol üstteki <b>Düzenle → Widget Ekle</b> (ya da <b>+</b>) → <b>Scriptable</b> → boyutu seç → <b>Widget Ekle</b>.</div></li>
+      <li><div>Eklenen widget'a basılı tut → <b>Widget'ı Düzenle</b> → <b>Script</b>: <b>Yumak</b>. Bitti! 🐾</div></li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2 class="sec">Kilit ekranı</h2>
+    <p class="note">Kilit ekranına basılı tut → <b>Özelleştir</b> → <b>Kilit Ekranı</b> → saatin altındaki widget alanına dokun → <b>Scriptable</b> → eklenen kutuya dokun → <b>Script: Yumak</b>. Bugünün antrenmanı ve toplam ilerleme görünür.</p>
+  </section>
+
+  <section class="card">
+    <h2 class="sec">Bilmekte fayda var</h2>
+    <p class="note">Widget'ı iOS kendi belirlediği aralıklarla (genelde yarım saatte bir) yeniler; gün değişince bugünü gösterir. Widget'a dokununca takvim açılır. Sadece izlemek isteyen, 4. adımda izleme linkini yapıştırabilir; widget hiçbir şeyi değiştirmez, sadece okur.</p>
+    <details id="betikKutu"><summary>Betiği göster</summary><pre id="betik"></pre></details>
+  </section>
+</main>
+
+<script type="text/plain" id="betikKaynak">
+// Yumak widget'ı 🐾 · kurulum betiği
+// Asıl widget'ı siteden indirir; yenilikler kendiliğinden gelir.
+const ADRES = 'https://bicer-latifcan.github.io/claudeAntrenmanProgram/widget/yumak-widget.js';
+const fm = FileManager.local(), yol = fm.joinPath(fm.documentsDirectory(), 'yumak-widget-cekirdek.js');
+let kod = null;
+try {
+  const r = new Request(ADRES); r.timeoutInterval = 12;
+  const s = await r.loadString();
+  if (r.response.statusCode === 200 && s.includes('YUMAK_WIDGET')) { kod = s; fm.writeString(yol, s); }
+} catch (e) {}
+if (!kod && fm.fileExists(yol)) kod = fm.readString(yol);
+if (kod) await eval(`(async () => {\n${kod}\n})()`);
+else { const w = new ListWidget(); w.addText('Yumak internet bekliyor…'); Script.setWidget(w); Script.complete(); }
+</script>
+<script>
+  const kaynak = document.getElementById('betikKaynak').textContent.trim() + '\n';
+  document.getElementById('betik').textContent = kaynak;
+  document.getElementById('kopyala').addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText(kaynak); b.textContent = 'Kopyalandı! 🐾'; }
+    catch {
+      const kutu = document.getElementById('betikKutu'); kutu.open = true;
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('betik'));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      b.textContent = 'Seçtim, Kopyala\'ya bas';
+    }
+    setTimeout(() => { b.textContent = 'Betiği kopyala'; }, 2600);
+  });
+</script>
+</body>
+</html>
