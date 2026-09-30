@@ -53,6 +53,9 @@ export { state };
 /* ---------- tarihler ---------- */
 const GUN = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const GUN_K = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+// gün adı tarihin kendisinden gelir: program hangi gün başlarsa takvim o günden başlar
+const gunAdi = (dt) => GUN[(dt.getDay() + 6) % 7];
+const gunKisa = (dt) => GUN_K[(dt.getDay() + 6) % 7];
 const AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const AY_K = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -79,7 +82,7 @@ export function dayInfo(w, d) {
 }
 export function describeDay(w, d) { // Yumak'ın takvimde söyledikleri
   const i = dayInfo(w, d), dt = dayDate(w, d), t = todayIndex();
-  const when = t && t.w === w && t.d === d ? 'Bugün' : `${GUN[d]} (${dt.getDate()} ${AY[dt.getMonth()]})`;
+  const when = t && t.w === w && t.d === d ? 'Bugün' : `${gunAdi(dt)} (${dt.getDate()} ${AY[dt.getMonth()]})`;
   if (state.done[key(w, d)]) return `${when}: <b>${i.baslik}</b>. Bunu bitirdin, pati damgasını ben vurdum!`;
   switch (i.tur) {
     case 'kuvvet': return `${when}: <b>${i.baslik}</b>. Tarçın hareketleri gösterecek, ben de set sayacağım.`;
@@ -148,12 +151,12 @@ function renderHero() {
     const s = parseDate(state.start), before = new Date() < s;
     el.className = 'today t-dinlenme';
     el.innerHTML = before
-      ? `<span class="t-label">Program ${s.getDate()} ${AY[s.getMonth()]} ${GUN[0]} başlıyor</span><span class="t-title">Isınmaya hazır mısın?</span><div class="row"><button class="pbtn primary" data-open="0,0">İlk günü aç</button></div>`
+      ? `<span class="t-label">Program ${s.getDate()} ${AY[s.getMonth()]} ${gunAdi(s)} başlıyor</span><span class="t-title">Isınmaya hazır mısın?</span><div class="row"><button class="pbtn primary" data-open="0,0">İlk günü aç</button></div>`
       : `<span class="t-label">8 hafta tamamlandı</span><span class="t-title">Dolunay! Tebrikler.</span><div class="row"><button class="pbtn" id="restart">Yeni tarihle başla</button></div>`;
   } else {
     const i = dayInfo(t.w, t.d), dt = dayDate(t.w, t.d), done = state.done[key(t.w, t.d)];
     el.className = `today ${i.cls}`;
-    el.innerHTML = `<span class="t-label">Bugün · ${GUN[t.d]} ${dt.getDate()} ${AY[dt.getMonth()]} · Hafta ${t.w + 1}</span>
+    el.innerHTML = `<span class="t-label">Bugün · ${gunAdi(dt)} ${dt.getDate()} ${AY[dt.getMonth()]} · Hafta ${t.w + 1}</span>
       <span class="t-title">${i.baslik}</span>
       <div class="row"><button class="pbtn primary" data-open="${t.w},${t.d}">${i.tur === 'dinlenme' ? 'Dinlenme gününü aç' : 'Antrenmanı aç'}</button>${done ? '<span class="chip done-chip" id="todayDone">Bugün tamam!</span>' : ''}</div>`;
     if (done) document.getElementById('todayDone').prepend(checkCanvas(26));
@@ -188,9 +191,9 @@ function renderCalendar() {
       const b = document.createElement('button'); b.type = 'button';
       b.className = `day ${i.cls}` + (t && t.w === w && t.d === d ? ' is-today' : '') + (state.done[k] ? ' is-done' : '') + (dt < now ? ' is-past' : '');
       b.dataset.w = w; b.dataset.d = d; b.dataset.platform = 'day';
-      b.setAttribute('aria-label', `Hafta ${w + 1}, ${GUN[d]} ${dt.getDate()} ${AY[dt.getMonth()]}: ${i.baslik}${state.done[k] ? ', tamamlandı' : ''}`);
+      b.setAttribute('aria-label', `Hafta ${w + 1}, ${gunAdi(dt)} ${dt.getDate()} ${AY[dt.getMonth()]}: ${i.baslik}${state.done[k] ? ', tamamlandı' : ''}`);
       const top = document.createElement('span'); top.className = 'd-top';
-      top.innerHTML = `<span>${GUN_K[d]}</span><span class="d-date">${dt.getDate()} ${AY_K[dt.getMonth()]}</span>`;
+      top.innerHTML = `<span>${gunKisa(dt)}</span><span class="d-date">${dt.getDate()} ${AY_K[dt.getMonth()]}</span>`;
       const ic = icon(i.icon, 2); ic.classList.add('d-icon'); ic.style.width = ''; ic.style.height = '';
       const lb = document.createElement('span'); lb.className = 'd-label'; lb.textContent = i.kisa;
       b.append(top, ic, lb);
@@ -260,7 +263,7 @@ function exCard(item, dayK, idx, compact = false) {
 }
 function openDay(w, d) {
   const i = dayInfo(w, d), dt = dayDate(w, d), k = key(w, d); openKey = k;
-  document.getElementById('dayEyebrow').textContent = `Hafta ${w + 1} · ${GUN[d]} ${dt.getDate()} ${AY[dt.getMonth()]}`;
+  document.getElementById('dayEyebrow').textContent = `Hafta ${w + 1} · ${gunAdi(dt)} ${dt.getDate()} ${AY[dt.getMonth()]}`;
   document.getElementById('dayTitle').textContent = i.baslik;
   let html = '';
   if (i.tur === 'kuvvet') {
