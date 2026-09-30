@@ -1,0 +1,26 @@
+// Uygulama modu: site bir kez açıldıktan sonra internetsiz de çalışsın.
+// Önce önbellekten açar, arkada yeni sürümü indirir (bir sonraki açılışta güncel olur).
+const CACHE = 'yumak-v2';
+const CORE = [
+  './', './index.html', './css/style.css', './manifest.webmanifest',
+  './js/app.js', './js/pixel.js', './js/yumak-art.js', './js/pet.js', './js/fx.js', './js/tarcin.js', './js/program.js', './js/bulut.js',
+  './assets/favicon.svg', './assets/icon-180.png', './assets/icon-192.png', './assets/icon-512.png',
+];
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', (e) => {
+  const u = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+  const same = u.origin === self.location.origin;
+  const fonts = u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
+  if (!same && !fonts) return; // YouTube, bulut vb. her zaman ağdan
+  e.respondWith(caches.open(CACHE).then(async (c) => {
+    const hit = await c.match(e.request, { ignoreSearch: same });
+    const net = fetch(e.request).then((r) => { if (r.ok || r.type === 'opaque') c.put(e.request, r.clone()); return r; }).catch(() => hit);
+    return hit || net;
+  }));
+});

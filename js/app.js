@@ -4,15 +4,42 @@ import { icon, drawHomeItems, hearts, sparkles } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
 import { mountAnim } from './tarcin.js';
+import * as bulut from './bulut.js';
 
-/* ---------- kayıt ---------- */
+/* ---------- kayıt: tarayıcıda + (kuruluysa) bulutta ---------- */
 const KEY = 'yumak-8-hafta-v1';
 const state = load();
 function load() {
-  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, walk: {}, sound: false };
+  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, walk: {}, sound: false, zaman: 0 };
   try { return { ...base, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return base; }
 }
-export function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* gizli pencere vb. */ } }
+const writeLocal = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* gizli pencere vb. */ } };
+let bulutKod = bulut.kodAl(), bulutDurum = '', bulutSaat = null, bulutZamanlayici = 0;
+export function save() {
+  state.zaman = Date.now(); writeLocal();
+  if (bulut.hazir() && bulutKod) { clearTimeout(bulutZamanlayici); bulutZamanlayici = setTimeout(bulutaYaz, 1500); }
+}
+async function bulutaYaz() {
+  if (!bulut.hazir() || !bulutKod) return;
+  try { await bulut.yukle(bulutKod, state); bulutDurum = 'ok'; bulutSaat = new Date(); }
+  catch { bulutDurum = 'hata'; }
+  renderCloud();
+}
+async function buluttanOku() { // açılışta: bulut daha yeniyse onu al, değilse buluta yaz
+  if (!bulut.hazir() || !bulutKod) return false;
+  try {
+    const c = await bulut.indir(bulutKod);
+    if (c && c.zaman > (state.zaman || 0)) {
+      for (const k of ['start', 'done', 'sets', 'kg', 'walk', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
+      writeLocal(); bulutDurum = 'ok'; bulutSaat = new Date(c.zaman); return true;
+    }
+    await bulut.yukle(bulutKod, state); bulutDurum = 'ok'; bulutSaat = new Date();
+  } catch { bulutDurum = 'hata'; }
+  return false;
+}
+addEventListener('pagehide', () => { if (bulutZamanlayici) { clearTimeout(bulutZamanlayici); bulutaYaz(); } });
+// tarayıcıdan "bu veriyi kendiliğinden silme" iste (bir kez, gerçek kullanım başlayınca)
+function kaliciIste() { try { navigator.storage?.persisted?.().then(p => { if (!p) navigator.storage.persist(); }); } catch { /* desteklenmiyor */ } }
 export { state };
 
 /* ---------- tarihler ---------- */
@@ -236,7 +263,7 @@ sheet.addEventListener('click', (e) => {
     const sk = `${openKey}:${sb.dataset.set}`, arr = state.sets[sk] || [];
     arr[+sb.dataset.i] = !arr[+sb.dataset.i]; state.sets[sk] = arr; save();
     sb.setAttribute('aria-pressed', arr[+sb.dataset.i] ? 'true' : 'false');
-    if (arr[+sb.dataset.i]) { const r = sb.getBoundingClientRect(); hearts(r.left + r.width / 2, r.top, 1); window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'set-done' } })); }
+    if (arr[+sb.dataset.i]) { kaliciIste(); const r = sb.getBoundingClientRect(); hearts(r.left + r.width / 2, r.top, 1); window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'set-done' } })); }
     return;
   }
   if (e.target.id === 'dayClose2') sheet.close();
@@ -249,6 +276,7 @@ sheet.addEventListener('change', (e) => {
   if (el.id === 'dayDone') {
     state.done[openKey] = el.checked; save();
     if (el.checked) {
+      kaliciIste();
       const r = el.getBoundingClientRect(); sparkles(r.left + 12, r.top); hearts(r.left + 60, r.top, 3);
       window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'day-done' } }));
     }
@@ -302,9 +330,40 @@ const soundBtn = document.getElementById('soundBtn');
 function syncSound() { soundBtn.textContent = state.sound ? 'Ses açık' : 'Ses kapalı'; soundBtn.setAttribute('aria-pressed', state.sound ? 'true' : 'false'); }
 soundBtn.addEventListener('click', () => { state.sound = !state.sound; save(); syncSound(); window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'sound', on: state.sound } })); });
 
+/* ---------- bulut bölümü (başlangıç penceresinde) ---------- */
+function renderCloud() {
+  const st = document.getElementById('cloudStatus'), act = document.getElementById('cloudActions');
+  if (!st) return;
+  act.innerHTML = '';
+  const btn = (text, fn, primary) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pbtn small' + (primary ? ' primary' : ''); b.textContent = text; b.addEventListener('click', fn); act.append(b); return b; };
+  if (!bulut.hazir()) { st.textContent = 'Henüz kurulmadı. İlerleme şimdilik sadece bu tarayıcıda saklanıyor.'; return; }
+  if (!bulutKod) {
+    st.textContent = 'Kapalı. Açarsan ilerleme buluta da yedeklenir; telefon değişse bile kişisel linkle geri gelir.';
+    btn('Bulut yedeğini aç', async () => { bulutKod = bulut.yeniKod(); st.textContent = 'Açılıyor…'; await bulutaYaz(); }, true);
+    return;
+  }
+  const saat = bulutSaat ? `${String(bulutSaat.getHours()).padStart(2, '0')}:${String(bulutSaat.getMinutes()).padStart(2, '0')}` : '';
+  st.textContent = bulutDurum === 'hata' ? 'Açık, ama son yedek gönderilemedi (internet yok olabilir). Bağlantı gelince tekrar dener.'
+    : `Açık ✓${saat ? ` Son yedek: ${saat}` : ''}. Kişisel linki sadece kendi cihazlarında kullan.`;
+  btn('Kişisel linki kopyala', async (e) => {
+    const link = bulut.kisiselLink(bulutKod);
+    try { await navigator.clipboard.writeText(link); e.target.textContent = 'Kopyalandı!'; }
+    catch { document.getElementById('backupInput').value = link; e.target.textContent = 'Link aşağıda'; }
+  });
+  btn('Şimdi yedekle', () => bulutaYaz());
+}
+
 /* ---------- başlat ---------- */
 function renderAll() { renderHero(); renderCalendar(); }
 function brand() { const c = document.getElementById('brandIcon'), i = icon('paw', 1); c.getContext('2d').drawImage(i, 4, 3); }
-renderWhy(); renderAll(); skyMoon(); stars(); brand(); syncSound();
+renderWhy(); renderAll(); skyMoon(); stars(); brand(); syncSound(); renderCloud();
 addEventListener('resize', () => stars());
-initPet({ state, save, describeDay, sozler: YUMAK_SOZLER, drawHomeItems, todayIndex, dayInfo });
+document.getElementById('settingsBtn').addEventListener('click', renderCloud);
+(async () => {
+  if (await buluttanOku()) { renderAll(); syncSound(); }
+  renderCloud();
+  // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
+  initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, drawHomeItems, todayIndex, dayInfo });
+})();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if (matchMedia('(display-mode: standalone)').matches) kaliciIste();
