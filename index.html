@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Yumak'la 8 Hafta</title>
+<meta name="description" content="Tek dambılla evde 8 haftalık program. Koçun Yumak: tombul, tatlı ve biraz tembel bir kedi.">
+<meta name="theme-color" content="#c9b8ff">
+<meta property="og:title" content="Yumak'la 8 Hafta">
+<meta property="og:description" content="Tek dambılla evde 8 haftalık program. Koçun Yumak.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bicer-latifcan.github.io/claudeAntrenmanProgrami/">
+<meta property="og:image" content="https://bicer-latifcan.github.io/claudeAntrenmanProgrami/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Yumak">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Pixelify+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="sky" aria-hidden="true">
+  <canvas id="stars" class="pix"></canvas>
+  <canvas id="moon" class="pix" width="40" height="40"></canvas>
+</div>
+
+<header class="top wrap">
+  <a class="brand" href="#" aria-label="Yumak'la 8 Hafta, en üste dön">
+    <canvas id="brandIcon" class="pix" width="16" height="16" aria-hidden="true"></canvas>
+    <span>Yumak'la 8 Hafta</span>
+  </a>
+  <div class="top-actions">
+    <span class="chip" id="moonChip" title="Bu gecenin ay evresi">Bu gece ay</span>
+    <button type="button" class="pbtn small" id="soundBtn" aria-pressed="false">Ses kapalı</button>
+    <button type="button" class="pbtn small" id="settingsBtn" aria-haspopup="dialog">Başlangıç</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="card hero-card" data-platform="hero">
+      <p class="eyebrow">Koçun Yumak · tek dambıl · evde</p>
+      <h1 id="heroTitle">Sekiz haftalık tatlı bir düzen.</h1>
+      <p class="lede">Haftada üç kuvvet günü, bol yürüyüş ve bir kedinin gözetimi. Güne tıkla, hareketleri kaslı arkadaşımız <b>Tarçın</b> göstersin. Yumak da arada gelip tavsiye versin.</p>
+      <div class="today" id="today"></div>
+    </div>
+    <div class="card moons-card" data-platform="moons">
+      <h2 class="h-small">Haftalık aylar</h2>
+      <p class="muted">Her hafta bir ay. Günleri tamamladıkça dolar.</p>
+      <div class="moons" id="moons"></div>
+      <div class="week-meter" id="weekMeter"></div>
+    </div>
+  </section>
+
+  <section class="card cal-card" id="takvim" aria-labelledby="calTitle" data-platform="calendar">
+    <div class="cal-head">
+      <h2 id="calTitle">Takvim</h2>
+      <ul class="legend" aria-label="Gün türleri">
+        <li><i class="dot t-A"></i>Kuvvet A</li>
+        <li><i class="dot t-B"></i>Kuvvet B</li>
+        <li><i class="dot t-yuruyus"></i>Yürüyüş</li>
+        <li><i class="dot t-uzun"></i>Uzun yürüyüş</li>
+        <li><i class="dot t-aralikli"></i>Aralıklı</li>
+        <li><i class="dot t-dinlenme"></i>Dinlenme</li>
+      </ul>
+    </div>
+    <div class="calendar" id="calendar"></div>
+  </section>
+
+  <section class="card why-card" id="neden" aria-labelledby="whyTitle">
+    <h2 id="whyTitle">Neden bu program?</h2>
+    <div class="why-grid" id="why"></div>
+    <details class="sources">
+      <summary>Kaynaklar</summary>
+      <ul id="sources"></ul>
+    </details>
+    <p class="note">Başlamadan önce doktoruna danış; özellikle ilaç kullanıyorsan, tansiyon ya da kalp sorunun varsa, hamileysen veya hamilelik planlıyorsan. Göğüs ağrısı, ciddi baş dönmesi, nefes darlığı, çarpıntı ya da bayılacak gibi olursan hemen dur.</p>
+  </section>
+
+  <footer class="foot">
+    <p>Program Yumak'tan, hareketler Tarçın'dan. Videolar YouTube'daki eğitmenlere ait.</p>
+  </footer>
+</main>
+
+<!-- Yumak'ın evi -->
+<div class="home" id="home" aria-label="Yumak'ın evi">
+  <button type="button" class="item" id="bedItem" aria-label="Yatak: Yumak'ı uyut"><canvas class="pix" width="32" height="16"></canvas></button>
+  <button type="button" class="item" id="foodItem" aria-label="Mama kabı: mama ver"><canvas class="pix" width="20" height="12"></canvas><span class="need" id="foodNeed"></span></button>
+  <button type="button" class="item" id="waterItem" aria-label="Su kabı: su ver"><canvas class="pix" width="20" height="12"></canvas><span class="need" id="waterNeed"></span></button>
+  <button type="button" class="item" id="litterItem" aria-label="Kum kabı: temizle"><canvas class="pix" width="32" height="14"></canvas></button>
+</div>
+
+<!-- Yumak katmanı -->
+<div class="pet-layer" id="petLayer" aria-hidden="true">
+  <canvas id="yumak" class="pix yumak" width="88" height="88"></canvas>
+  <canvas id="yumakFace" class="pix yumak-face" width="104" height="88"></canvas>
+</div>
+<div class="bubble" id="bubble" role="status" aria-live="polite"></div>
+
+<!-- Gün ayrıntısı -->
+<dialog class="sheet" id="daySheet" aria-labelledby="dayTitle">
+  <div class="sheet-inner" data-platform="sheet">
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow" id="dayEyebrow"></p>
+        <h2 id="dayTitle"></h2>
+      </div>
+      <button type="button" class="pbtn small" id="dayClose">Kapat</button>
+    </div>
+    <div id="dayBody"></div>
+  </div>
+</dialog>
+
+<!-- Başlangıç tarihi -->
+<dialog class="sheet small" id="settingsSheet" aria-labelledby="setTitle">
+  <form method="dialog" class="sheet-inner">
+    <h2 id="setTitle">Başlangıç tarihi</h2>
+    <p class="muted">Programın ilk pazartesisini seç. Takvim buna göre tarihlenir.</p>
+    <label class="field">Başlangıç
+      <input type="date" id="startInput">
+    </label>
+    <details class="backup">
+      <summary>Başka cihaza taşı (yedek kodu)</summary>
+      <p class="muted">İlerleme bu tarayıcıda saklanır. Başka bir cihazda devam etmek için kodu kopyala, orada bu alana yapıştır.</p>
+      <div class="row-end">
+        <button type="button" class="pbtn small" id="copyBackup">Kodumu kopyala</button>
+        <span class="muted" id="backupMsg" role="status"></span>
+      </div>
+      <label class="field">Kodu buraya yapıştır
+        <textarea id="backupInput" rows="3" spellcheck="false"></textarea>
+      </label>
+      <button type="button" class="pbtn small" id="loadBackup">Yedekten yükle</button>
+    </details>
+    <div class="row-end">
+      <button type="button" class="pbtn ghost" id="resetBtn">İlerlemeyi sıfırla</button>
+      <button class="pbtn" id="saveStart" value="save">Kaydet</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
