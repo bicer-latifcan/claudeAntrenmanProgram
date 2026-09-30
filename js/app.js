@@ -338,8 +338,15 @@ function renderCloud() {
   const btn = (text, fn, primary) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pbtn small' + (primary ? ' primary' : ''); b.textContent = text; b.addEventListener('click', fn); act.append(b); return b; };
   if (!bulut.hazir()) { st.textContent = 'Henüz kurulmadı. İlerleme şimdilik sadece bu tarayıcıda saklanıyor.'; return; }
   if (!bulutKod) {
-    st.textContent = 'Kapalı. Açarsan ilerleme buluta da yedeklenir; telefon değişse bile kişisel linkle geri gelir.';
-    btn('Bulut yedeğini aç', async () => { bulutKod = bulut.yeniKod(); st.textContent = 'Açılıyor…'; await bulutaYaz(); }, true);
+    st.textContent = 'Kapalı. Kişisel linkin varsa aşağıya yapıştır; yoksa yeni bir yedek aç. Telefon değişse bile ilerleme linkle geri gelir.';
+    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Kişisel linki yapıştır'; inp.className = 'kg'; inp.style.width = '100%'; inp.id = 'cloudLinkInput';
+    act.append(inp);
+    btn('Bağlan', async () => {
+      const k = bulut.koduKaydet(inp.value); if (!k) { st.textContent = 'Bu link okunamadı. Tamamını yapıştırdığından emin ol.'; return; }
+      bulutKod = k; st.textContent = 'Bağlanıyor…';
+      if (await buluttanOku()) { renderAll(); syncSound(); location.reload(); } else renderCloud();
+    }, true);
+    btn('Yeni yedek aç', async () => { bulutKod = bulut.yeniKod(); st.textContent = 'Açılıyor…'; await bulutaYaz(); });
     return;
   }
   const saat = bulutSaat ? `${String(bulutSaat.getHours()).padStart(2, '0')}:${String(bulutSaat.getMinutes()).padStart(2, '0')}` : '';

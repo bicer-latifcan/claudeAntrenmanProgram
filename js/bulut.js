@@ -3,8 +3,8 @@
 // Bu iki bilgi gizli değildir; güvenliği Firestore kuralları sağlar
 // (sadece uzun, tahmin edilemez kodu bilen kişi o kaydı okuyup yazabilir).
 export const BULUT = {
-  projectId: '',
-  apiKey: '',
+  projectId: 'yumak-8-hafta',
+  apiKey: 'AIzaSyCWo2qiv7f5j6mv_V-Pvjw3n26aiMiaojg',
 };
 
 const KOD_KEY = 'yumak-bulut-kod';
@@ -29,6 +29,13 @@ export function yeniKod() {
   return s;
 }
 export const kisiselLink = (kod) => `${location.origin}${location.pathname}#kod-${kod}`;
+// yapıştırılan link ya da koddan kodu çıkar (iPhone'da ana ekran uygulaması Safari'den ayrı hafıza kullanır)
+export function koduKaydet(metin) {
+  const m = String(metin).trim().match(/(?:#kod-)?([A-Za-z0-9]{24,})\s*$/);
+  if (!m) return null;
+  try { localStorage.setItem(KOD_KEY, m[1]); } catch { /* yok */ }
+  return m[1];
+}
 
 function zamanAsimi(ms) { const c = new AbortController(); setTimeout(() => c.abort(), ms); return c.signal; }
 
