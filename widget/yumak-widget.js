@@ -4,10 +4,11 @@
 // widget ayarlarındaki "Parameter" alanına yapıştırılan link de olur. Plan, sitedeki js/program.js'ten okunur.
 const SITE = (typeof YUMAK_SITE !== 'undefined' && YUMAK_SITE) || 'https://bicer-latifcan.github.io/claudeAntrenmanProgram/';
 const BULUT = { projectId: 'yumak-8-hafta', apiKey: 'AIzaSyCWo2qiv7f5j6mv_V-Pvjw3n26aiMiaojg' };
-const RESIM_SURUM = 1;
+const RESIM_SURUM = 2;
 const KC = 'yumak-widget-link';
 const R = {
   ink: '#3d2a3f', inkSoft: '#6f5a73', paper: '#fffaf3', pink: '#ff6f98', pinkDeep: '#e0507c', green: '#2fb56d', lilac: '#8f7ad8',
+  flame: '#ff8a3d', flameDeep: '#e0622a',
   sky1: '#c9b8ff', sky2: '#f7c6e0', sky3: '#ffe3cb',
 };
 const TUR_RENK = { A: '#ffd2ad', B: '#ffc4d8', yuruyus: '#c4f1df', uzun: '#cfe2ff', aralikli: '#fff0a6', dinlenme: '#e4d8ff' };
@@ -101,12 +102,30 @@ function gunBilgi(plan, w, d) {
     default: return { tur: 'dinlenme', renk: 'dinlenme', baslik: 'Dinlenme günü', alt: 'Kaslar dinlenirken güçlenir', kisa: 'Dinlenme', resim: 'dinlenme' };
   }
 }
-function soz(plan, anahtar, sakaSans = 0.3) {
+function soz(plan, anahtar, sakaSans = 0.3, degis = {}) {
   const S = (plan && plan.YUMAK_SOZLER) || {};
   let havuz = S[anahtar] || [];
   if (Math.random() < sakaSans) havuz = havuz.concat(S.sakalar || []);
   const temiz = havuz.map((s) => s.replace(/<[^>]+>/g, '')).filter((s) => s.length <= 96);
-  return temiz.length ? rastgele(temiz) : 'Mrrr!';
+  const sec = temiz.length ? rastgele(temiz) : 'Mrrr!';
+  return sec.replace(/\{(\w)\}/g, (_, k) => (k in degis ? degis[k] : ''));
+}
+// seri: art arda tamamlanan günler. Dinlenme günleri zinciri bozmaz, uzatır; ama zincirde en az bir gerçek gün olmalı.
+// Bugün henüz yapılmadıysa zincir kopmuş sayılmaz (gün bitmedi): seri dünden geriye sayılır.
+function seriHesapla(plan, done, fark) {
+  const N = plan.AYARLAR.haftaSayisi * 7;
+  const dinlenme = (i) => plan.TAKVIM[Math.floor(i / 7)][i % 7].tur === 'dinlenme';
+  const yapti = (i) => !!done[`h${Math.floor(i / 7) + 1}g${(i % 7) + 1}`];
+  const ok = (i) => i >= 0 && i < N && (yapti(i) || dinlenme(i));
+  const zincir = (son) => { let n = 0, gercek = 0; for (let i = son; ok(i); i--) { n++; if (yapti(i)) gercek++; } return gercek ? n : 0; };
+  if (fark < 0) return { seri: 0, rekor: 0, bugunTamam: false, kirik: false };
+  const bitti = fark >= N, bugunTamam = !bitti && ok(fark);
+  const seri = bitti ? zincir(N - 1) : zincir(bugunTamam ? fark : fark - 1);
+  let rekor = 0;
+  for (let i = 0; i <= Math.min(fark, N - 1); i++) { if (!bitti && i === fark && !bugunTamam) break; rekor = Math.max(rekor, zincir(i)); }
+  let gecmis = false;
+  for (let i = 0; i < Math.min(fark, N); i++) if (yapti(i)) { gecmis = true; break; }
+  return { seri, rekor, bugunTamam, kirik: !bugunTamam && seri === 0 && gecmis };
 }
 async function modelKur(baglanti) {
   const simdi = (typeof YUMAK_TARIH !== 'undefined' && YUMAK_TARIH) ? new Date(YUMAK_TARIH) : new Date();
@@ -128,7 +147,8 @@ async function modelKur(baglanti) {
     const b = gunBilgi(plan, w, d), dt = new Date(basTarih); dt.setDate(dt.getDate() + w * 7 + d);
     return { ...b, d, tarih: dt, tamam: !!done[`h${w + 1}g${d + 1}`], bugun: d === bugunD, gecmis: d < bugunD, gelecek: d > bugunD };
   });
-  const ortak = { simdi, izle: baglanti.izle, taze: durum.taze, bulutYok: durum.yok, tamamSay, gunSay };
+  const SR = seriHesapla(plan, done, fark);
+  const ortak = { simdi, izle: baglanti.izle, taze: durum.taze, bulutYok: durum.yok, tamamSay, gunSay, seri: SR.seri, rekor: SR.rekor, seriYandi: SR.bugunTamam && SR.seri > 0 };
   if (fark < 0) {
     const kalan = -fark;
     return { ...ortak, durum: 'once', resim: 'bekle', ust: 'PROGRAM BAŞLIYOR', baslik: `${basTarih.getDate()} ${AY[basTarih.getMonth()]} ${GUN[gunNo(basTarih)]}`,
@@ -136,19 +156,30 @@ async function modelKur(baglanti) {
       hafta: haftaKur(0, -1), haftaNo: 1, renk: 'A' };
   }
   if (fark >= toplamGun) {
-    return { ...ortak, durum: 'bitti', resim: 'bitti', ust: '8 HAFTA TAMAM', baslik: 'Dolunay!', alt: `${tamamSay}/${gunSay} gün tamamlandı`, soz: soz(plan, 'tamam', 0),
+    return { ...ortak, durum: 'bitti', resim: 'bitti', ust: '8 HAFTA TAMAM', baslik: 'Dolunay!', alt: `${tamamSay}/${gunSay} gün · en uzun zincir ${SR.rekor}`,
+      soz: SR.rekor >= 56 && plan.YUMAK_SOZLER.seriRekor ? plan.YUMAK_SOZLER.seriRekor[56] : soz(plan, 'seriBitti', 0, { n: SR.rekor }),
+      seriYandi: SR.rekor > 0, seri: SR.rekor, seriKisa: `En uzun zincir: ${SR.rekor}`,
       satir: 'Dolunay! 8 hafta tamam', hafta: haftaKur(plan.AYARLAR.haftaSayisi - 1, 7), haftaNo: plan.AYARLAR.haftaSayisi, renk: 'dinlenme' };
   }
   const w = Math.floor(fark / 7), d = fark % 7, b = gunBilgi(plan, w, d), tamam = !!done[`h${w + 1}g${d + 1}`];
-  const anahtar = tamam ? 'tamam' : { kuvvet: 'gunKuvvet', yuruyus: 'gunYuruyus', uzun: 'gunUzun', aralikli: 'gunAralikli', dinlenme: 'gunDinlenme' }[b.tur];
+  const dinlenme = b.tur === 'dinlenme', n = SR.seri, aksam = simdi.getHours() >= 18, degis = { n, m: n + 1 };
+  const kutlama = SR.bugunTamam && n > 0 && plan.YUMAK_SOZLER && plan.YUMAK_SOZLER.seriRekor && plan.YUMAK_SOZLER.seriRekor[n];
+  // Yumak'ın hâli: yapılana kadar üzgün (akşam dramatik), yapınca mutlu, eşiklerde parti
+  let resimAd, sozu, kisa;
+  if (kutlama) { resimAd = 'parti'; sozu = kutlama; kisa = `${n} gün! Parti!`; }
+  else if (dinlenme) { resimAd = 'dinlenme'; sozu = n > 0 ? soz(plan, 'seriDinlenme', 0, degis) : soz(plan, 'seriDinlenmeYeni', 0); kisa = n > 0 ? `Dinlen, zincir ${n}` : 'Dinlen, yarın başla'; }
+  else if (tamam) { resimAd = 'tamam'; sozu = soz(plan, 'seriTamam', 0, degis); kisa = `${n} gündür! Mırr`; }
+  else if (n > 0) { resimAd = aksam ? 'dram' : 'uzgun'; sozu = soz(plan, aksam ? 'seriAksam' : 'seriBekliyor', 0, degis); kisa = `Yaparsan ${n + 1}! 🥺`; }
+  else if (SR.kirik) { resimAd = 'uzgun'; sozu = soz(plan, 'seriKirildi', 0); kisa = 'Yeniden başla!'; }
+  else { resimAd = 'uzgun'; sozu = soz(plan, 'seriIlk', 0); kisa = 'İlk halkayı tak!'; }
   return {
     ...ortak, durum: 'surec', bilgi: b, tamam, haftaNo: w + 1, renk: b.renk,
-    resim: tamam ? 'tamam' : b.resim,
+    resim: resimAd, seriKisa: kisa,
     ust: `BUGÜN · ${GUN_B[gunNo(bugun)]} ${bugun.getDate()} ${AY_B[bugun.getMonth()]}`,
-    baslik: tamam && b.tur !== 'dinlenme' ? 'Bugün tamam!' : b.baslik,
-    alt: tamam && b.tur !== 'dinlenme' ? b.kisa + ' ✓' : b.alt,
-    soz: soz(plan, anahtar, tamam ? 0 : 0.3),
-    satir: tamam ? 'Bugün tamam! ✓' : `Bugün: ${b.kisa}`,
+    baslik: tamam && !dinlenme ? 'Bugün tamam!' : b.baslik,
+    alt: tamam && !dinlenme ? b.kisa + ' ✓' : b.alt,
+    soz: sozu,
+    satir: tamam && !dinlenme ? 'Bugün tamam!' : `Bugün: ${b.kisa}`,
     hafta: haftaKur(w, d),
   };
 }
@@ -187,6 +218,13 @@ function cip(st, metin, bg, font) { // takvimdeki renkli gün kutusu gibi küç�
   yazi(c, metin, font, R.ink, 1, 0.6);
   return c;
 }
+function alev(st, m, boy) { // seri: bugün tamamsa turuncu yanar, değilse gri bekler
+  const a = st.addStack(); a.layoutHorizontally(); a.centerAlignContent(); a.spacing = 2;
+  sembol(a, 'flame.fill', boy, m.seriYandi ? R.flame : R.ink, m.seriYandi ? 1 : 0.3);
+  yazi(a, String(m.seri || 0), Font.heavyRoundedSystemFont(boy), m.seriYandi ? R.flameDeep : R.inkSoft, 1, 0.7);
+  return a;
+}
+const seriVar = (m) => m.durum === 'surec' || m.durum === 'bitti';
 function balon(st, metin, boy, satir = 2) {
   const b = st.addStack(); b.backgroundColor = renk(R.paper); b.cornerRadius = 10; b.borderWidth = 2; b.borderColor = renk(R.ink); b.setPadding(4, 8, 4, 8);
   yazi(b, metin, Font.semiboldRoundedSystemFont(boy), R.ink, satir, 0.75);
@@ -197,7 +235,7 @@ function balon(st, metin, boy, satir = 2) {
 async function kucuk(m) {
   const w = new ListWidget(); arkaPlan(w); w.setPadding(10, 12, 10, 12);
   const ust = w.addStack(); ust.layoutHorizontally(); ust.centerAlignContent();
-  yazi(ust, m.durum === 'surec' ? 'BUGÜN' : m.ust, Font.heavyRoundedSystemFont(10), R.inkSoft, 1, 0.6);
+  if (seriVar(m)) alev(ust, m, 14); else yazi(ust, m.ust, Font.heavyRoundedSystemFont(10), R.inkSoft, 1, 0.6);
   ust.addSpacer();
   if (m.haftaNo) cip(ust, `H${m.haftaNo}`, TUR_RENK[m.renk] || R.paper, Font.heavyRoundedSystemFont(9));
   w.addSpacer(2);
@@ -206,7 +244,8 @@ async function kucuk(m) {
   orta.addSpacer();
   w.addSpacer(2);
   const t = yazi(w, m.baslik, Font.heavyRoundedSystemFont(14), R.ink, 1, 0.55); t.centerAlignText();
-  if (m.hafta.length) { w.addSpacer(4); const dz = w.addStack(); dz.layoutHorizontally(); dz.addSpacer(); noktalar(dz, m.hafta, 10); dz.addSpacer(); }
+  if (seriVar(m)) { w.addSpacer(2); const k = yazi(w, m.seriKisa, Font.heavyRoundedSystemFont(11), m.seriYandi ? R.flameDeep : R.pinkDeep, 1, 0.6); k.centerAlignText(); }
+  else if (m.hafta.length) { w.addSpacer(4); const dz = w.addStack(); dz.layoutHorizontally(); dz.addSpacer(); noktalar(dz, m.hafta, 10); dz.addSpacer(); }
   else { const a = yazi(w, m.alt, Font.semiboldRoundedSystemFont(10), R.inkSoft, 2, 0.7); a.centerAlignText(); }
   return w;
 }
@@ -219,7 +258,9 @@ async function ortaBoy(m, buyuk = false) {
   const sag = satir.addStack(); sag.layoutVertically();
   yazi(sag, m.ust, Font.heavyRoundedSystemFont(10), R.inkSoft, 1, 0.6);
   sag.addSpacer(3);
-  cip(sag, m.baslik, TUR_RENK[m.renk] || R.paper, Font.heavyRoundedSystemFont(16));
+  const bas = sag.addStack(); bas.layoutHorizontally(); bas.centerAlignContent();
+  cip(bas, m.baslik, TUR_RENK[m.renk] || R.paper, Font.heavyRoundedSystemFont(16));
+  if (seriVar(m)) { bas.addSpacer(7); alev(bas, m, 16); }
   sag.addSpacer(3);
   yazi(sag, m.alt, Font.semiboldRoundedSystemFont(12), R.ink, 1, 0.7);
   if (m.hafta.length) { sag.addSpacer(5); const nr = sag.addStack(); nr.layoutHorizontally(); nr.centerAlignContent(); noktalar(nr, m.hafta, 12); nr.addSpacer(6); yazi(nr, `H${m.haftaNo}`, Font.heavyRoundedSystemFont(11), R.inkSoft); }
@@ -241,30 +282,30 @@ async function ortaBoy(m, buyuk = false) {
       else if (g.bugun) sembol(r, 'largecircle.fill.circle', 13, R.pinkDeep);
     }
     w.addSpacer();
-    yazi(w, `Toplam: ${m.tamamSay}/${m.gunSay} gün${m.izle ? ' · izleme' : ''}`, Font.semiboldRoundedSystemFont(10), R.inkSoft, 1, 0.7);
+    yazi(w, `Zincir: ${m.seri || 0} gün · Rekor: ${m.rekor || 0} · Toplam: ${m.tamamSay}/${m.gunSay}${m.izle ? ' · izleme' : ''}`, Font.semiboldRoundedSystemFont(10), R.inkSoft, 1, 0.7);
   }
   return w;
 }
 function kilitDikdortgen(m) {
   const w = new ListWidget(); w.addAccessoryWidgetBackground = true; w.setPadding(4, 8, 4, 8);
   const ust = w.addStack(); ust.layoutHorizontally(); ust.centerAlignContent(); ust.spacing = 4;
-  const s = SFSymbol.named('pawprint.fill'); s.applyFont(Font.boldSystemFont(11)); const si = ust.addImage(s.image); si.imageSize = new Size(11, 11);
-  const u = ust.addText(m.haftaNo ? `Yumak · H${m.haftaNo}` : 'Yumak'); u.font = Font.boldRoundedSystemFont(11);
+  const s = SFSymbol.named(seriVar(m) ? 'flame.fill' : 'pawprint.fill'); s.applyFont(Font.boldSystemFont(11)); const si = ust.addImage(s.image); si.imageSize = new Size(11, 11);
+  const u = ust.addText(seriVar(m) ? `${m.seri || 0} gün zincir` : 'Yumak'); u.font = Font.boldRoundedSystemFont(11);
   const b = w.addText(m.baslik); b.font = Font.heavyRoundedSystemFont(15); b.lineLimit = 1; b.minimumScaleFactor = 0.6;
-  const a = w.addText(m.durum === 'surec' ? `${m.alt} · ${m.tamamSay}/${m.gunSay}` : m.alt); a.font = Font.mediumRoundedSystemFont(11); a.lineLimit = 1; a.minimumScaleFactor = 0.7;
+  const a = w.addText(m.durum === 'surec' ? `${m.seriKisa} · ${m.tamamSay}/${m.gunSay}` : m.alt); a.font = Font.mediumRoundedSystemFont(11); a.lineLimit = 1; a.minimumScaleFactor = 0.7;
   return w;
 }
 function kilitSatir(m) {
   const w = new ListWidget();
-  const s = SFSymbol.named('pawprint.fill'); w.addImage(s.image);
-  w.addText(m.satir);
+  const s = SFSymbol.named(seriVar(m) ? 'flame.fill' : 'pawprint.fill'); w.addImage(s.image);
+  w.addText(seriVar(m) ? `${m.seri || 0} · ${m.satir}` : m.satir);
   return w;
 }
 function kilitDaire(m) {
   const w = new ListWidget(); w.addAccessoryWidgetBackground = true;
-  const s = SFSymbol.named(m.tamam ? 'checkmark' : 'pawprint.fill'); s.applyFont(Font.boldSystemFont(16));
+  const s = SFSymbol.named(seriVar(m) ? 'flame.fill' : 'pawprint.fill'); s.applyFont(Font.boldSystemFont(16));
   const st = w.addStack(); st.layoutHorizontally(); st.addSpacer(); const im = st.addImage(s.image); im.imageSize = new Size(16, 16); st.addSpacer();
-  const t = w.addText(m.gunSay ? `${m.tamamSay}/${m.gunSay}` : '–'); t.font = Font.heavyRoundedSystemFont(12); t.centerAlignText(); t.minimumScaleFactor = 0.6;
+  const t = w.addText(seriVar(m) ? String(m.seri || 0) : '–'); t.font = Font.heavyRoundedSystemFont(16); t.centerAlignText(); t.minimumScaleFactor = 0.6;
   return w;
 }
 async function ciz(boy, m, baglanti) {
@@ -277,7 +318,8 @@ async function ciz(boy, m, baglanti) {
   else w = await ortaBoy(m);
   w.url = baglanti ? `${SITE}#${baglanti.izle ? 'izle' : 'kod'}-${baglanti.kod}` : SITE;
   const geceYarisi = new Date(m.simdi); geceYarisi.setHours(24, 1, 0, 0);
-  w.refreshAfterDate = new Date(Math.min(Date.now() + 30 * 60e3, geceYarisi.getTime()));
+  const aralik = m.durum === 'surec' && !m.seriYandi && !m.tamam ? 20 : 45;
+  w.refreshAfterDate = new Date(Math.min(Date.now() + aralik * 60e3, geceYarisi.getTime()));
   return w;
 }
 

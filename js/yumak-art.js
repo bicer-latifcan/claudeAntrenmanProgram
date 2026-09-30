@@ -36,7 +36,7 @@ function ruffPattern(lx, ly) {
 const PAT = { fur: furPattern, head: headPattern, ruff: ruffPattern };
 
 /* ---------- yüz parçaları ---------- */
-function eye(g, cx, cy, s, st, xs = 1) {
+function eye(g, cx, cy, s, st, xs = 1, side = 0, ho = null) { // side: -1 sol göz, 1 sağ göz
   const mode = st.blink ? 'closed' : (st.eyes || 'open');
   const L = (pts) => pts.forEach(([x, y]) => {
     for (let dy = 0; dy < Math.max(1, Math.round(s * 0.8)); dy++) px(g, Math.round(cx + x * s * xs), Math.round(cy + y * s) + dy, M.LINE);
@@ -46,6 +46,21 @@ function eye(g, cx, cy, s, st, xs = 1) {
   if (mode === 'squint') { L([[-3, -1], [-1, 0], [1, 1], [-3, 2.4], [-1, 1.8]]); return; } // >
   const look = st.look || { x: 0, y: 0 };
   ellipse(g, cx, cy, 4.3 * s * xs, 4.8 * s, M.IRIS, { ox: cx, oy: cy }, 0);
+  if (mode === 'sad' || mode === 'cry') { // üzgün: kocaman parlak göz bebeği, dış köşesi düşük göz kapağı, biriken yaş
+    const inn = side ? -side : 1; // gözden yüzün ortasına doğru
+    ellipse(g, cx + look.x * s * 0.6 * xs, cy - 0.3 * s, 3.4 * s * xs, 4 * s, M.PUPIL);
+    tri(g, cx - inn * 5 * s * xs, cy - 5.7 * s, cx + inn * 1.8 * s * xs, cy - 6 * s, cx - inn * 5 * s * xs, cy - 1.1 * s, M.HEAD, ho || { ox: cx, oy: cy, kind: 0 });
+    const r = Math.max(2, Math.round(s * 1.7));
+    for (let j = 0; j < r; j++) for (let i = 0; i < r; i++) px(g, Math.round(cx + inn * 0.3 * s * xs) + i, Math.round(cy - 2.7 * s) + j, M.SHINE);
+    px(g, Math.round(cx - inn * 1.7 * s * xs), Math.round(cy + 1.5 * s), M.SHINE);
+    px(g, Math.round(cx + inn * 1.9 * s * xs), Math.round(cy + 2.3 * s), M.SHINE);
+    for (let i = -2; i <= 2; i++) g.overlay(Math.round(cx + i * s * xs), Math.round(cy + 4.6 * s), '#a8dcff');
+    if (mode === 'cry') {
+      const tx = Math.round(cx - inn * 2.4 * s * xs);
+      for (let j = 0; j < Math.round(7 * s); j++) g.overlay(tx - (j > 3 ? inn : 0), Math.round(cy + 5 * s) + j, j % 2 ? '#c8ecff' : '#7cc3f5');
+    }
+    return;
+  }
   if (mode === 'wide') {
     ellipse(g, cx + look.x * s * 0.8, cy + 0.2 * s, 1.5 * s * xs, 2.2 * s, M.PUPIL);
   } else if (mode === 'sleepy') {
@@ -72,6 +87,7 @@ function mouth(g, cx, cy, s, st) {
     ellipse(g, cx, cy + 2.9 * s * big, 1.5 * s * big, 0.9 * s * big, M.TONGUE);
     return;
   }
+  if (m === 'frown') { for (const [x, y] of [[0, 0], [0, 0.8], [-1, 1.3], [-2, 1.9], [-3, 2.6], [1, 1.3], [2, 1.9], [3, 2.6]]) px(g, Math.round(cx + x * s), Math.round(cy + y * s), M.MOUTH); return; }
   if (m === 'tongue') { ellipse(g, cx, cy + 2.6 * s, 1.6 * s, 1.5 * s, M.TONGUE); }
   const pts = [[0, 0], [0, 0.8], [-1, 1.6], [-2, 1.9], [-3, 1.3], [1, 1.6], [2, 1.9], [3, 1.3]];
   for (const [x, y] of pts) px(g, Math.round(cx + x * s), Math.round(cy + y * s), M.MOUTH);
@@ -112,8 +128,8 @@ export function headFront(g, hx, hy, s, st) {
   ellipse(g, ...P(0, 11), 3 * s, 2 * s, M.CREAM, o, 0.05);
   ellipse(g, ...P(-12.5, 6), 3 * s, 1.6 * s, M.BLUSH, o);
   ellipse(g, ...P(12.5, 6), 3 * s, 1.6 * s, M.BLUSH, o);
-  eye(g, ...P(-7.6, 1), s, st);
-  eye(g, ...P(7.6, 1), s, st);
+  eye(g, ...P(-7.6, 1), s, st, 1, -1, o);
+  eye(g, ...P(7.6, 1), s, st, 1, 1, o);
   nose(g, ...P(0, 5.2), s);
   mouth(g, ...P(0, 7.6), s, st);
   // kulak tüyleri
@@ -130,6 +146,11 @@ export function headFront(g, hx, hy, s, st) {
     limb(g, ...P(-2.4, 0), ...P(2.4, 0), 0.9 * s, 0.9 * s, M.PAINT, { kind: K.SHADES });
     for (const sd of [-1, 1]) limb(g, ...P(sd * 13, 0), ...P(sd * 17.5, -2.5), 0.8 * s, 0.8 * s, M.PAINT, { kind: K.SHADES });
     for (const sx of [-10, 5.2]) { px(g, ...P(sx, -1.4), M.SHINE); px(g, ...P(sx + 1, -2.3), M.SHINE); px(g, ...P(sx + 1.2, 1.2), M.SHINE); }
+  }
+  if (st.hat) { // parti şapkası (seri kutlaması)
+    tri(g, ...P(-6, -13), ...P(6, -13), ...P(1.5, -25.5), M.PAINT, { kind: K.PINK }, 0.1);
+    line(g, ...P(-3.6, -16.4), ...P(4.2, -17.8), '#fff4f8'); line(g, ...P(-1.2, -20.8), ...P(3.2, -21.8), '#fff4f8');
+    ellipse(g, ...P(1.5, -26), 2.3 * s, 2.3 * s, M.SOLID, {}, 0, '#ffd84d');
   }
   whiskers(g, hx, hy, s, 0);
 }

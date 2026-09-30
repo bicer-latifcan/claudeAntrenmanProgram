@@ -368,6 +368,68 @@ export const YUMAK_SOZLER = {
   kum: ['Bakma! Özel anım.', '...', 'Oh be.'],
   uyku: ['zzz... dinlenme de antrenmanın parçası...', 'zzz... bir set daha... zzz...', 'Beş dakika daha... zzz...'],
   tamam: ['Harika! Bugünü bitirdin, pati damgasını vurdum!', 'İşte bu! Ben gurur duyuyorum, sen de duy.', 'Bir gün daha tamam! Ay biraz daha doldu.', 'Tebrikler! Bugün kendine bir mırıltı hak ettin.'],
+  // seri (widget): {n} = şu anki seri, {m} = bugün yapınca olacak seri. Dinlenme günleri seriyi uzatır.
+  seriIlk: [
+    'İlk halka seni bekliyor! Bugün yap, zincirimiz başlasın.',
+    'Zincir sıfırda, ben de sıfırdayım. Beni mutlu et, 1 yapalım!',
+    'Bir gün yaparsan 1 olur. Matematik bu kadar basit, ben bile anladım.',
+  ],
+  seriBekliyor: [
+    '{n} günlük zincirimiz var. Bugün de yaparsan {m}! Lütfen? Mrr?',
+    'Bugün yapmadın diye üzgünüm. Mamamı bile üzgün yedim. Ama yedim.',
+    'Koltukta seni bekliyorum. Yapınca kucağına gelirim, söz.',
+    'Zincir {n} gün! Bir halka daha, sonra mırıltı konseri.',
+    'Yapmadan önce: üzgün kedi. Yaptıktan sonra: mutlu kedi. Seç bakalım.',
+    'Tüylerim bile üzgün. Bir antrenman, sonra mutluluktan zıplarım.',
+    'Bugünkü hedef: {m}. gün. Benimki: seni gururla izlemek.',
+    'Kuyruğumu ısırıyorum, çünkü zincir tehlikede!',
+  ],
+  seriAksam: [
+    'Saat ilerliyor, ben de dramatik bir şekilde yere yatıyorum.',
+    'Gece yarısına kadar yaparsan zincir {m}! Yapmazsan ağlarım. Ciddiyim.',
+    '10 dakika yeter! Ben 10 dakikada 3 kere uyurum, sen bir set yaparsın.',
+    'Zincir kopmasın diye patilerimle tutuyorum ama çok ağır!',
+    'Pencereden bakıp iç çekiyorum… {n} günlük zincirim…',
+    'Son çağrı! Kısa bir yürüyüş bile zinciri kurtarır.',
+  ],
+  seriTamam: [
+    '{n} gündür zincir sağlam! Mutluluktan kuyruğum pervane oldu.',
+    'Bugün de tamam! {n}. gün. Seninle gurur duyuyorum, mrr.',
+    'Zinciri uzattın! Yarın {m} yapalım, ben mamayı hazırlarım.',
+    'Mutlu kedi modu: açık. Sebebi: sen.',
+    'Aferin! {n} gün üst üste. Kucağına oturma hakkı kazandım.',
+    'Bugünkü halka takıldı. Zincir {n}! Mırr mırr.',
+  ],
+  seriKirildi: [
+    'Zincir koptu ama ben kopmadım! Bugün yeniden başlıyoruz.',
+    'Dün kaçtı, olsun. Kediler geçmişe takılmaz. Bugün 1. gün!',
+    'Yeni zincir, yeni ben. Hadi ilk halkayı takalım!',
+    'Üzgünüm ama pes etmedim. Bugün yaparsan yine mutluyum.',
+  ],
+  seriDinlenme: [
+    'Bugün dinlenme ve zincir yine uzuyor: {n}! Dinlenmek de antrenman.',
+    'Zinciri bugün ben tutuyorum, sen dinlen. {n} gün!',
+    'Dinlenme günü: kaslar büyüyor, zincir {n} oldu. Zzz.',
+  ],
+  seriDinlenmeYeni: [
+    'Bugün dinlen, yarın yeni zincire birlikte başlarız.',
+    'Dinlenme günü. Yarın ilk halkayı takıyoruz, anlaştık mı?',
+  ],
+  seriBitti: [
+    '8 hafta bitti! En uzun zincirin {n} gün. Seninle gurur duyuyorum.',
+    'Dolunay! {n} günlük zincir rekorun var. Bir tur daha mı? Mrr?',
+  ],
+  seriRekor: {
+    3: '3 gün üst üste! Alışkanlık filizleniyor.',
+    7: '1 hafta zincir! Sana koca bir mırıltı borçluyum.',
+    14: '2 hafta! Tarçın bile kıskandı, ben parti yapıyorum.',
+    21: '21 gün! Bilim diyor ki bu artık bir alışkanlık.',
+    28: '4 hafta! Ay doldu, sen de doldun… güçle!',
+    35: '35 gün! Yumak şeref kürsüsüne çıktın.',
+    42: '6 hafta zincir! Efsane moduna geçtin.',
+    49: '7 hafta! Bir hafta kaldı, zincir parlıyor.',
+    56: '56 gün, tek bir kopma yok! Dolunay kedisi seni selamlıyor.',
+  },
 };
 
 // Yumak'ın etkinlikleri: her birinin başında ve ortasında söylediği şakalar
