@@ -32,4 +32,3 @@ Bütün plan tek dosyada durur: `js/program.js`.
 
 Kurulum ya da derleme adımı yok. Klasörü herhangi bir statik sunucuda açmak yeterli.
 
-Sağlık notu: Bu sayfa genel bilgi verir, tıbbi tavsiye değildir. Başlamadan önce doktora danışılmalı.

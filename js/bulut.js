@@ -14,14 +14,28 @@ const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 export const hazir = () => Boolean(BULUT.projectId && BULUT.apiKey);
 const adres = (kod) => `https://firestore.googleapis.com/v1/projects/${BULUT.projectId}/databases/(default)/documents/${KOLEKSIYON}/${kod}?key=${BULUT.apiKey}`;
 
-// Kişisel link: ...#kod-XXXX  → kod bu cihaza kaydedilir, adres çubuğundan silinir
-export function kodAl() {
+// Linkler:
+//   ...#kod-XXXX   kişisel link: ilerleme bu cihaza bağlanır, her işlem buluta yazılır
+//   ...#izle-XXXX  izleme linki: aynı ilerlemeyi salt okunur gösterir, hiçbir şey yazmaz
+// Kod cihaza kaydedilir ve adres çubuğundan silinir.
+const IZLE_KEY = 'yumak-izle-kod';
+export function linkModu() {
   try {
-    const m = location.hash.match(/^#kod-([A-Za-z0-9]{24,})$/);
-    if (m) { localStorage.setItem(KOD_KEY, m[1]); history.replaceState(null, '', location.pathname + location.search); return m[1]; }
-    return localStorage.getItem(KOD_KEY);
-  } catch { return null; }
+    const m = location.hash.match(/^#(kod|izle)-([A-Za-z0-9]{24,})$/);
+    if (m) {
+      history.replaceState(null, '', location.pathname + location.search);
+      if (m[1] === 'izle') { localStorage.setItem(IZLE_KEY, m[2]); return { kod: m[2], izle: true, yeni: false }; }
+      const eski = localStorage.getItem(KOD_KEY);
+      localStorage.setItem(KOD_KEY, m[2]); localStorage.removeItem(IZLE_KEY);
+      return { kod: m[2], izle: false, yeni: eski !== m[2] };   // bu cihazda ilk kez: buluttaki kayıt kazanır
+    }
+    const iz = localStorage.getItem(IZLE_KEY);
+    if (iz) return { kod: iz, izle: true, yeni: false };
+    return { kod: localStorage.getItem(KOD_KEY), izle: false, yeni: false };
+  } catch { return { kod: null, izle: false, yeni: false }; }
 }
+export function izlemedenCik() { try { localStorage.removeItem(IZLE_KEY); } catch { /* yok */ } }
+export const izlemeLinki = (kod) => `${location.origin}${location.pathname}#izle-${kod}`;
 export function yeniKod() {
   const b = crypto.getRandomValues(new Uint8Array(28));
   let s = ''; for (const x of b) s += ABC[x % ABC.length];
@@ -31,9 +45,9 @@ export function yeniKod() {
 export const kisiselLink = (kod) => `${location.origin}${location.pathname}#kod-${kod}`;
 // yapıştırılan link ya da koddan kodu çıkar (iPhone'da ana ekran uygulaması Safari'den ayrı hafıza kullanır)
 export function koduKaydet(metin) {
-  const m = String(metin).trim().match(/(?:#kod-)?([A-Za-z0-9]{24,})\s*$/);
+  const m = String(metin).trim().match(/(?:#(?:kod|izle)-)?([A-Za-z0-9]{24,})\s*$/);
   if (!m) return null;
-  try { localStorage.setItem(KOD_KEY, m[1]); } catch { /* yok */ }
+  try { localStorage.setItem(KOD_KEY, m[1]); localStorage.removeItem(IZLE_KEY); } catch { /* yok */ }
   return m[1];
 }
 

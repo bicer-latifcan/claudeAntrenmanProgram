@@ -68,6 +68,12 @@ b { font-weight: 800; }
 .brand canvas { width: 32px; height: 32px; }
 .top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
+/* ---------- izleme modu ---------- */
+.izle-bar { margin-top: 4px; }
+.izle-inner { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--butter); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 10px 14px; font: 500 15px/1.3 var(--font-pixel); }
+.izle-actions { margin-left: auto; display: flex; gap: 8px; }
+body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], body.izle #startInput, body.izle #saveStart, body.izle #resetBtn, body.izle #loadBackup { pointer-events: none; opacity: .7; }
+
 /* ---------- tanıtım ---------- */
 .hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 22px; margin-top: 30px; }
 .hero-card h1 { margin-bottom: 14px; }
