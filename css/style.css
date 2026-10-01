@@ -389,6 +389,15 @@ body.hk-acik { overflow: hidden; }
 .m-gun-link { font: 700 14px/1.2 var(--font-body); color: var(--ink); background: none; border: 0; padding: 0; text-decoration: underline; text-decoration-style: dotted; cursor: pointer; }
 .m-pmos { display: grid; gap: 8px; }
 .m-pmos .eyebrow, .m-pmos h2, .m-pmos p { margin: 0; }
+.m-pmos summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; grid-template-areas: "e o" "b o"; gap: 4px 10px; align-items: center; }
+.m-pmos summary::-webkit-details-marker { display: none; }
+.m-pmos summary .eyebrow { grid-area: e; }
+.m-pmos-baslik { grid-area: b; font: 700 22px/1.2 var(--font-pixel); }
+.m-pmos-ok { grid-area: o; font: 700 16px/1 var(--font-body); border: 2px solid var(--ink); background: var(--mint); padding: 6px 8px; transition: transform .2s; }
+.m-pmos[open] .m-pmos-ok { transform: rotate(180deg); }
+.m-pmos[open] summary { margin-bottom: 8px; }
+.m-denge-dur { margin: 0; padding: 8px 12px; font-size: 14px; line-height: 1.4; background: #ffe0e8; border-top: 2px dashed var(--ink); }
+.m-liste-denge { margin: 0 0 8px; padding: 8px 10px; font-size: 14px; line-height: 1.45; background: #ffe0e8; border: 2px solid var(--ink); }
 .m-pmos .lede-kucuk { font-size: 16px; line-height: 1.5; }
 .m-pmos-liste { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; line-height: 1.45; }
 .m-ek { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: #fff8d6; border: 2px dashed var(--ink); }
@@ -478,3 +487,6 @@ body.izle .m-sec-bas, body.izle .m-alt, body.izle .m-baska, body.izle .m-ikon-bt
   html { scroll-behavior: auto; }
   .day, .bubble { transition: none; }
 }
+
+/* ---------- yeni sürüm bandı ---------- */
+.yeni-surum { position: fixed; left: 50%; bottom: calc(var(--home-h) + 14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 900; display: flex; gap: 10px; align-items: center; padding: 8px 10px 8px 14px; background: var(--paper); border: 3px solid var(--ink); box-shadow: var(--shadow); font: 600 15px/1.2 var(--font-body); max-width: calc(100vw - 32px); }

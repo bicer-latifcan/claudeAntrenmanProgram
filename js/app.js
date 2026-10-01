@@ -483,7 +483,17 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // uygulama arka planda günlerce açık kalabilir: öne gelince yeni sürüm var mı bak, varsa bir sonraki dönüşte yükle
   const vardi = !!navigator.serviceWorker.controller;
   let yeniSurum = false, sonKontrol = Date.now();
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (vardi) yeniSurum = true; });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!vardi) return;
+    yeniSurum = true;
+    const mesgul = document.querySelector('dialog[open], .hikaye') || document.activeElement?.matches?.('input, textarea');
+    if (performance.now() < 20000 && !mesgul) { location.reload(); return; } // açılışta geldiyse hemen yeni sürüme geç
+    if (document.getElementById('yeniSurumBant')) return;
+    const bant = document.createElement('div'); bant.id = 'yeniSurumBant'; bant.className = 'yeni-surum'; bant.setAttribute('role', 'status');
+    bant.innerHTML = '<span>Yumak yeni şeyler getirdi ✨</span><button type="button" class="pbtn small primary">Yenile</button>';
+    bant.querySelector('button').onclick = () => location.reload();
+    document.body.append(bant);
+  });
   navigator.serviceWorker.register('sw.js').then((reg) => {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') return;

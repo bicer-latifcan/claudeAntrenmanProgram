@@ -20,7 +20,7 @@ export function initMutfak({ state, save, izle }) {
   const kok = document.getElementById('sayfaMutfak');
   const M = state.mutfak || (state.mutfak = {});
   for (const k of ['gun', 'kontrol', 'liste']) if (!M[k] || typeof M[k] !== 'object') M[k] = {};
-  let secili = bugun(), acikDegis = null;
+  let secili = bugun(), acikDegis = null, dengeUyari = null; // dengeUyari: { anahtar, metin } — ikinci dokunuşta yine de seçer
   const acikMit = new Set(), acikKcal = new Set(); // kalori gizli: protein çipine dokununca görünür
 
   /* ---------- hesaplar ---------- */
@@ -53,8 +53,9 @@ export function initMutfak({ state, save, izle }) {
       liste.sort((a, b) => (S[b].spor ? 1 : 0) - (S[a].spor ? 1 : 0));
     }
     const ofs = kayit(d)?.ofs?.[ogun] || 0;
-    if (ogun === 'aksam' && !ofs) { // haftalık denge: eksik kalan grup varsa ve hafta bitiyorsa, o yemek menüde olsun
-      const acil = dengeAcil(d), korunan = new Set();
+    const korunan = new Set();
+    if (ogun === 'aksam' && !ofs) { // haftalık denge: eksik kalan grup varsa ve boş akşam azaldıysa, o yemek menüde olsun
+      const acil = dengeAcil(d);
       const isine = (id) => acil.some((D) => secenekEtiket(id).has(D.e));
       for (const D of acil) {
         const var_ = liste.findIndex((id) => secenekEtiket(id).has(D.e));
@@ -67,7 +68,22 @@ export function initMutfak({ state, save, izle }) {
         else { liste[yer] = aday[gunNo(d) % aday.length]; korunan.add(yer); }
       }
     }
-    if (!ofs) return liste;
+    if (!ofs) { // aynı gün tekrar olmasın: kahvaltıda yumurta seçildiyse ara öğün ve akşamda yumurtalı seçenek çıkmasın ("Başka göster" hepsini açar)
+      const yasak = gunAnaSet(d, ogun), secim = kayit(d)?.sec?.[ogun];
+      if (yasak.size) {
+        const cakisir = (id) => (S[id].ana || []).some((a) => yasak.has(a));
+        const kullanilan = new Set(liste);
+        liste = liste.map((id, i) => {
+          if (id === secim || korunan.has(i) || !cakisir(id)) return id;
+          const aday = Object.keys(S).filter((x) => !cakisir(x) && !kullanilan.has(x));
+          const spor = aday.filter((x) => S[x].spor);
+          const sec = (S[id].spor && spor.length ? spor : aday)[(gunNo(d) + i) % Math.max(1, (S[id].spor && spor.length ? spor : aday).length)];
+          if (!sec) return id;
+          kullanilan.add(sec); return sec;
+        });
+      }
+      return liste;
+    }
     const havuz = [...liste, ...Object.keys(S).filter((id) => !liste.includes(id))];
     return liste.map((_, i) => havuz[(ofs * liste.length + i) % havuz.length]);
   }
@@ -81,8 +97,8 @@ export function initMutfak({ state, save, izle }) {
   const geceKalem = (d) => GRUPLAR.gece[kayit(d)?.deg?.gece ?? 3];
   // haftalık denge: bir akşam yemeği hangi gruplara sayılır (değiştirilen kalemlerle)
   const etiketleri = (grup, alt) => { const e = ETIKET[grup]?.[alt]; return e ? [].concat(e) : []; };
-  const secenekEtiket = (id, d = null) => new Set((d ? kalemler('aksam', id, d) : OGUNLER.aksam.secenekler[id].kalem.map(([grup, alt]) => ({ grup, alt })))
-    .flatMap((k) => etiketleri(k.grup, k.alt)));
+  const secenekEtiket = (id, d = null) => (!OGUNLER.aksam.secenekler[id] ? new Set() : new Set((d ? kalemler('aksam', id, d) : OGUNLER.aksam.secenekler[id].kalem.map(([grup, alt]) => ({ grup, alt })))
+    .flatMap((k) => etiketleri(k.grup, k.alt))));
   const haftaGunleri = (d) => { const pzt = gunEkle(d, -gunNo(d)); return Array.from({ length: 7 }, (_, i) => gunEkle(pzt, i)); };
   function haftaSay(d, haric = null) { // bu hafta seçilen akşamlarda hangi gruptan kaç gün
     const say = {};
@@ -93,9 +109,33 @@ export function initMutfak({ state, save, izle }) {
     }
     return say;
   }
-  function dengeAcil(d) { // hafta bitmeden yetişmesi gereken gruplar (bu gün dahil kalan günlere göre)
-    const say = haftaSay(d, d), kalan = 7 - gunNo(d);
-    return DENGE.filter((D) => D.min && (D.min - (say[D.e] || 0)) > 0 && (D.min - (say[D.e] || 0)) >= kalan - 1);
+  const listeYaz = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} ve ${a[a.length - 1]}` : a[0] || ''); // "a, b ve c"
+  const TEKRAR = ['yumurta', 'peynir']; // aynı gün iki öğünde olmasın (yoğurt tekrar edebilir: günde 3 süt ürünü iyi)
+  function gunAnaSet(d, haric) { // o gün diğer öğünlerde seçilenlerin ana malzemesi
+    const set = new Set();
+    for (const o of SIRA) {
+      if (o === haric) continue;
+      const id = kayit(d)?.sec?.[o], S = id && OGUNLER[o].secenekler[id];
+      if (S) for (const a of S.ana || []) if (TEKRAR.includes(a)) set.add(a);
+    }
+    return set;
+  }
+  const bosAksam = (d, haric = null) => haftaGunleri(d).filter((g) => (!haric || isoTarih(g) !== isoTarih(haric)) && !OGUNLER.aksam.secenekler[kayit(g)?.sec?.aksam]);
+  const eksikSay = (say) => DENGE.filter((D) => D.min).reduce((a, D) => a + Math.max(0, D.min - (say[D.e] || 0)), 0);
+  function dengeAcil(d) { // eksikler, bu gün dışındaki boş akşamlara artık sığmıyorsa: bu günün menüsüne gelsin
+    const say = haftaSay(d, d), eksik = eksikSay(say);
+    if (!eksik || eksik < bosAksam(d, d).length) return [];
+    return DENGE.filter((D) => D.min && (D.min - (say[D.e] || 0)) > 0);
+  }
+  // bu akşam seçilirse haftanın dengesi hâlâ kurulabilir mi? (sorun yoksa null)
+  function dengeSorun(id, d) {
+    const say = haftaSay(d, d);
+    for (const e of secenekEtiket(id, d)) say[e] = (say[e] || 0) + 1;
+    const fazla = DENGE.find((D) => D.maks && (say[D.e] || 0) > D.maks);
+    if (fazla) return `Bu seçimle bu hafta ${say[fazla.e]} akşam ${fazla.ad.toLowerCase()} olur; haftada ${fazla.metin} yeter.`;
+    const eksik = DENGE.filter((D) => D.min && (say[D.e] || 0) < D.min), bos = bosAksam(d, d).length;
+    if (eksikSay(say) > bos) return `Bu seçimden sonra bu hafta ${bos ? `sadece ${bos} boş akşam kalıyor ama` : 'boş akşam kalmıyor ama'} ${listeYaz(eksik.map((D) => `${D.min - (say[D.e] || 0)} ${D.ad.toLowerCase()}`))} eksik.`;
+    return null;
   }
   // yaklaşık besin değeri: seçenek (değiştirilen kalemlerle) ve günün seçilen öğünleri
   const besin = (ogun, id, d) => kalemler(ogun, id, d).reduce((a, k) => ({ p: a.p + k.p, k: a.k + k.k }), { p: 0, k: 0 });
@@ -176,12 +216,14 @@ export function initMutfak({ state, save, izle }) {
   }
   function secenekKart(ogun, id, i, on, d, kucuk = false) { // kucuk: başka bir seçenek seçildiyse sadece başlık
     const S = OGUNLER[ogun].secenekler[id];
+    const uyari = dengeUyari?.anahtar === `${isoTarih(d)}:${ogun}:${id}` ? dengeUyari.metin : '';
     const satirlar = kalemler(ogun, id, d).map((k, s) => `<li>${kalemSatir(k, k.grup, `${ogun}:${id}:${s}`)}</li>`).join('');
     return `<div class="m-sec${on ? ' on' : ''}${kucuk ? ' kucuk' : ''}">
       <button type="button" class="m-sec-bas" data-sec="${ogun}:${id}" aria-pressed="${on}">
         <span class="m-harf">${HARF[i]}</span><span class="m-sec-ad">${S.ad}</span><span class="m-dk">${S.dk} dk</span>
-        <span class="m-tik">${on ? 'Seçildi ✓ (bırakmak için dokun)' : kucuk ? 'Buna geç' : 'Bunu seç'}</span>
+        <span class="m-tik">${on ? 'Seçildi ✓ (bırakmak için dokun)' : uyari ? 'Yine de seç' : kucuk ? 'Buna geç' : 'Bunu seç'}</span>
       </button>
+      ${uyari ? `<p class="m-denge-dur"><b>Haftalık denge:</b> ${uyari} Başka bir seçenek seç ya da yine de seçmek için başlığa tekrar dokun.</p>` : ''}
       ${kucuk ? '' : `<div class="m-sec-besin">${(() => { const b = besin(ogun, id, d); return besinCip(`${ogun}:${id}`, b.p, b.k); })()}${ogun === 'aksam' ? dengeRozet(id, d) : ''}</div>
       <ul class="m-kalemler">${satirlar}</ul>${S.not ? `<p class="m-not">${S.not}</p>` : ''}${S.neden ? `<p class="m-neden"><b>Neden bu?</b> ${S.neden}</p>` : ''}`}
     </div>`;
@@ -191,7 +233,7 @@ export function initMutfak({ state, save, izle }) {
     return acil.length ? `<span class="m-denge-rozet">Haftalık denge: bu hafta ${acil.map((D) => D.ad.toLowerCase()).join(' ve ')} eksik</span>` : '';
   }
   function dengeKart(d) {
-    const say = haftaSay(d), hafta = haftaGunleri(d), secili = hafta.filter((g) => kayit(g)?.sec?.aksam).length;
+    const say = haftaSay(d), hafta = haftaGunleri(d), secili = hafta.filter((g) => OGUNLER.aksam.secenekler[kayit(g)?.sec?.aksam]).length;
     const satir = DENGE.map((D) => {
       const n = say[D.e] || 0;
       if (D.bilgi) return `<li class="m-denge-satir bilgi"><span class="m-denge-ad">${D.ad}</span><span class="m-denge-say">${n} akşam</span><span class="m-denge-neden">${D.neden}</span></li>`;
@@ -201,9 +243,13 @@ export function initMutfak({ state, save, izle }) {
         <span class="m-denge-say">${n} / ${D.metin}${tamam ? ' ✓' : ''}</span><span class="m-denge-neden">${D.neden}</span></li>`;
     }).join('');
     const eksik = DENGE.filter((D) => D.min && (say[D.e] || 0) < D.min), fazla = DENGE.filter((D) => D.maks && (say[D.e] || 0) > D.maks);
-    const yorum = !secili ? 'Akşam yemeği seçtikçe burada sayılır. Hafta sonuna doğru eksik kalan grup varsa menüye ben getiririm.'
-      : fazla.length ? `Bu hafta ${fazla.map((D) => D.ad.toLowerCase()).join(', ')} biraz fazla oldu; kalan günlerde tavuk, balık ya da baklagil seç.`
-      : eksik.length ? `Bu hafta ${eksik.map((D) => `${D.min - (say[D.e] || 0)} ${D.ad.toLowerCase()}`).join(' ve ')} daha lazım. Hafta biterken menüye ben eklerim.`
+    const bos = bosAksam(d), eksikMetin = listeYaz(eksik.map((D) => `${D.min - (say[D.e] || 0)} ${D.ad.toLowerCase()}`));
+    const gunAdi = (g) => `<button type="button" class="m-gun-link" data-gotur="${isoTarih(g)}">${GUN[gunNo(g)]}</button>`;
+    const degisecek = hafta.filter((g) => { const id = kayit(g)?.sec?.aksam; return id && OGUNLER.aksam.secenekler[id] && ![...secenekEtiket(id, g)].some((e) => eksik.some((D) => D.e === e)); });
+    const yorum = !secili ? 'Akşam yemeği seçtikçe burada sayılır. Haftada 2 balık, 2–3 baklagil ve 1–2 kırmızı et hedefi var; dengeyi bozan bir seçim yaparsan seni uyarırım.'
+      : fazla.length ? `Bu hafta ${fazla.map((D) => D.ad.toLowerCase()).join(', ')} fazla oldu. Şu günlerden birini değiştir: ${hafta.filter((g) => [...secenekEtiket(kayit(g)?.sec?.aksam || '', g)].some((e) => fazla.some((D) => D.e === e))).map(gunAdi).join(', ')}.`
+      : eksik.length && !bos.length ? `<b>Bu hafta dengesiz:</b> ${eksikMetin} eksik ve boş akşam kalmadı. Şu günlerden birinin akşamını değiştir: ${degisecek.map(gunAdi).join(', ')}.`
+      : eksik.length ? `Bu hafta ${eksikMetin} daha lazım. Boş ${bos.length} akşamın var (${bos.map(gunAdi).join(', ')}); yer daraldıkça bu yemekleri o günlerin menüsüne rozetle koyuyorum.`
       : 'Bu haftanın dengesi tamam! Balık, baklagil, et: hepsi yerinde. Mrrr.';
     return `<section class="card m-denge" data-platform="card">
       <div class="m-denge-bas"><h2 class="h-small">Haftalık denge</h2><span class="muted">${tarihKisa(hafta[0])} – ${tarihKisa(hafta[6])} · seçilen ${secili}/7 akşam</span></div>
@@ -266,12 +312,27 @@ export function initMutfak({ state, save, izle }) {
       const d = gunEkle(d0, i), sec = SIRA.filter((o) => { const id = kayit(d)?.sec?.[o]; return id && OGUNLER[o].secenekler[id]; });
       return { d, i, sec, eksik: SIRA.filter((o) => !sec.includes(o)) };
     });
-    const dolu = gunler.filter((g) => g.sec.length), yarim = dolu.filter((g) => g.eksik.length);
+    const dolu = gunler.filter((g) => g.sec.length), yarim = dolu.filter((g) => g.eksik.length), hic = gunler.filter((g) => !g.sec.length);
     const gunBtn = (g) => `<button type="button" class="m-gun-link" data-gotur="${isoTarih(g.d)}">${ad(g.d, g.i)}</button>`;
     const son = gunEkle(d0, 6);
     const kapsam = `<p class="m-liste-kapsam">Bugünün öğünleri dahil 7 gün: <b>${d0.getDate()} ${AY[d0.getMonth()]} – ${son.getDate()} ${AY[son.getMonth()]}</b>.${dolu.length ? ` Listede ${dolu.length} günün seçimleri var: ${dolu.map(gunBtn).join(', ')}.` : ''}</p>`;
-    const uyari = yarim.length ? `<ul class="m-liste-uyari" role="status">${yarim.map((g) => `<li><b>Dikkat:</b> ${gunBtn(g)} için ${g.eksik.map((o) => OGUN_AD[o]).join(' ve ')} seçilmedi; listede ${g.eksik.length > 1 ? 'bunlar' : 'bu'} yok.</li>`).join('')}</ul>` : '';
-    return kapsam + uyari;
+    // denge: bu 7 günde seçilen akşamlar
+    const say = {}; let tavukG = 0, aksamN = 0;
+    for (const g of gunler) {
+      const id = kayit(g.d)?.sec?.aksam; if (!OGUNLER.aksam.secenekler[id]) continue;
+      aksamN++;
+      for (const e of secenekEtiket(id, g.d)) say[e] = (say[e] || 0) + 1;
+      for (const k of kalemler('aksam', id, g.d)) for (const [urun, mik, birim] of k.al) if (/^Tavuk/.test(urun) && birim === 'g') tavukG += mik;
+    }
+    const sorunlar = [];
+    if (aksamN >= 4) {
+      for (const D of DENGE) if (D.min && (say[D.e] || 0) < D.min) sorunlar.push(`${D.ad.toLowerCase()} ${say[D.e] || 0} (hedef ${D.metin})`);
+      for (const D of DENGE) if (D.maks && (say[D.e] || 0) > D.maks) sorunlar.push(`${D.ad.toLowerCase()} ${say[D.e]} (en fazla ${D.maks})`);
+    }
+    const tavukN = say.tavuk || 0;
+    const denge = sorunlar.length ? `<div class="m-liste-denge" role="status"><b>Dengesiz liste:</b> seçilen ${aksamN} akşamda ${sorunlar.join(', ')}${tavukN >= 4 ? `; ${tavukN} akşam tavuk${tavukG ? ` (≈ ${tavukG >= 1000 ? `${ondalik(tavukG / 1000)} kg` : `${Math.round(tavukG / 10) * 10} g`})` : ''}` : ''}. Birkaç tavuk akşamını balık ya da baklagille değiştir; Haftalık denge kartı yardım eder.</div>` : '';
+    const uyari = yarim.length || hic.length ? `<ul class="m-liste-uyari" role="status">${yarim.map((g) => `<li><b>Dikkat:</b> ${gunBtn(g)} için ${g.eksik.map((o) => OGUN_AD[o]).join(' ve ')} seçilmedi; listede ${g.eksik.length > 1 ? 'bunlar' : 'bu'} yok.</li>`).join('')}${hic.length && dolu.length ? `<li><b>Hiç seçim yok:</b> ${hic.map(gunBtn).join(', ')}. Bu günlerin malzemesi listede değil.</li>` : ''}</ul>` : '';
+    return kapsam + denge + uyari;
   }
   function listeKart() {
     const d0 = bugun(), anahtar = isoTarih(d0), tikli = M.liste[anahtar] || {}, urunler = alisveris(d0);
@@ -291,12 +352,11 @@ export function initMutfak({ state, save, izle }) {
     </section>`;
   }
   function pmosKart() {
-    return `<section class="card m-pmos" data-platform="card">
-      <p class="eyebrow">Neden bu menü?</p>
-      <h2 class="h-small">PMOS ve bu menü</h2>
+    return `<details class="card m-pmos" data-platform="card">
+      <summary><span class="eyebrow">Neden bu menü?</span><span class="h-small m-pmos-baslik">PMOS ve bu menü</span><span class="m-pmos-ok" aria-hidden="true">▼</span></summary>
       <p class="lede-kucuk">${PMOS.giris}</p>
       ${PMOS.bolumler.map((b) => `<h3 class="m-alt-baslik">${b.baslik}</h3>${b.metin ? `<p>${b.metin}</p>` : ''}${b.liste ? `<ul class="m-pmos-liste">${b.liste.map(([k, t]) => `<li><b>${k}</b> ${t}</li>`).join('')}</ul>` : ''}`).join('')}
-    </section>`;
+    </details>`;
   }
   function notlarKart() {
     return `<section class="card m-notlar" data-platform="card">
@@ -345,7 +405,7 @@ export function initMutfak({ state, save, izle }) {
   kok.addEventListener('click', (e) => {
     const b = e.target.closest('button, input'); if (!b) return;
     const ds = b.dataset, d = secili, r = b.getBoundingClientRect();
-    if (ds.gun != null) { const n = +ds.gun; secili = n === 0 ? bugun() : gunEkle(secili, n); acikDegis = null; ciz(); return; }
+    if (ds.gun != null) { const n = +ds.gun; secili = n === 0 ? bugun() : gunEkle(secili, n); acikDegis = null; dengeUyari = null; ciz(); return; }
     if (ds.gotur) { const [y, m, g] = ds.gotur.split('-').map(Number); secili = new Date(y, m - 1, g); acikDegis = null; ciz(); kok.scrollIntoView({ block: 'start' }); return; }
     if (ds.mit != null) { const i = +ds.mit; if (acikMit.has(i)) acikMit.delete(i); else acikMit.add(i); ciz(); return; }
     if (ds.degis) { acikDegis = acikDegis === ds.degis ? null : ds.degis; ciz(); return; }
@@ -354,7 +414,13 @@ export function initMutfak({ state, save, izle }) {
     if (izle) return; // izleme modunda hiçbir şey değişmez
     if (ds.ek) { const k = kayitYaz(d); k.ek[ds.ek] = !k.ek[ds.ek]; if (k.ek[ds.ek]) sparkles(r.left + r.width / 2, r.top, 3); kaydet(); ciz(); return; }
     if (ds.sec) {
-      const [ogun, id] = ds.sec.split(':'), k = kayitYaz(d);
+      const [ogun, id] = ds.sec.split(':'), anahtar = `${isoTarih(d)}:${ogun}:${id}`;
+      if (kayit(d)?.sec?.[ogun] !== id && ogun === 'aksam') { // haftalık denge kontrolü
+        const sorun = dengeSorun(id, d);
+        if (sorun && dengeUyari?.anahtar !== anahtar) { dengeUyari = { anahtar, metin: sorun }; ciz(); yumakSoylesin('Dur bir saniye! Bu seçim haftanın dengesini bozuyor, kartta yazdım.'); return; }
+      }
+      dengeUyari = null;
+      const k = kayitYaz(d);
       if (k.sec[ogun] === id) delete k.sec[ogun]; else {
         k.sec[ogun] = id; sparkles(r.left + r.width / 2, r.top + 10, 4);
         if (ogun === 'aksam' && (haftaSay(d).tavuk || 0) >= 5) yumakSoylesin('Bu hafta tavuk çok sevildi! Kalan günlerde bir balık ya da baklagil iyi gelir.');
