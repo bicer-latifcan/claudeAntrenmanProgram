@@ -36,6 +36,7 @@ async function bulutaYaz() {
   catch { bulutDurum = 'hata'; }
   renderCloud();
 }
+addEventListener('online', () => { if (bulutDurum === 'hata') bulutaYaz(); }); // internet gelince bekleyen yedeği gönder
 async function buluttanOku() {
   if (!bulut.hazir() || !bulutKod) return false;
   try {
@@ -421,14 +422,14 @@ function renderCloud() {
     return;
   }
   const saat = bulutSaat ? `${String(bulutSaat.getHours()).padStart(2, '0')}:${String(bulutSaat.getMinutes()).padStart(2, '0')}` : '';
-  st.textContent = bulutDurum === 'hata' ? 'Şifreyle giriş yapıldı, ama son yedek gönderilemedi (internet yok olabilir). Bağlantı gelince tekrar dener.'
-    : `Şifreyle giriş yapıldı ✓${saat ? ` Son yedek: ${saat}` : ''}. Başka bir cihazdan da aynı şifreyle girebilirsin.`;
+  st.textContent = bulutDurum === 'hata' ? 'Şifreyle giriş yapıldı, ama son yedek gönderilemedi (internet yok olabilir). İnternet gelince kendisi tekrar gönderir; istersen aşağıdan elle de gönderebilirsin.'
+    : `Şifreyle giriş yapıldı ✓ Her değişiklik birkaç saniye içinde kendiliğinden yedeklenir${saat ? ` (son yedek: ${saat})` : ''}. Başka bir cihazdan da aynı şifreyle girebilirsin.`;
   btn('İzleme linkini kopyala', async (e) => {
     const link = bulut.izlemeLinki(bulutKod);
     try { await navigator.clipboard.writeText(link); e.target.textContent = 'Kopyalandı!'; }
     catch { document.getElementById('backupInput').value = link; e.target.textContent = 'Link aşağıda'; }
   });
-  btn('Şimdi yedekle', () => bulutaYaz());
+  if (bulutDurum === 'hata') btn('Tekrar dene', () => bulutaYaz(), true); // normalde gerek yok: yedek kendiliğinden gider
   const cikis = btn('Çıkış yap', async () => {
     if (cikis.dataset.emin !== '1') { cikis.dataset.emin = '1'; cikis.textContent = 'Emin misin? Tekrar dokun'; return; }
     cikis.textContent = 'Yedekleniyor…'; clearTimeout(bulutZamanlayici);
