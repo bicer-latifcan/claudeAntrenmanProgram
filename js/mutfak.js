@@ -195,9 +195,10 @@ export function initMutfak({ state, save, izle }) {
 
   /* ---------- kayıt ---------- */
   function kaydet() {
-    const sinir = isoTarih(gunEkle(bugun(), -60)), listeSinir = isoTarih(gunEkle(bugun(), -14));
+    // eski öğün seçimleri 60 günde, alışveriş tikleri 2 haftada silinir; günlük liste geçmişi 400 gün saklanır (bir yıl rahat sığar)
+    const sinir = isoTarih(gunEkle(bugun(), -60)), kontrolSinir = isoTarih(gunEkle(bugun(), -400)), listeSinir = isoTarih(gunEkle(bugun(), -14));
     for (const k of Object.keys(M.gun)) if (k < sinir) delete M.gun[k];
-    for (const k of Object.keys(M.kontrol)) if (k < sinir) delete M.kontrol[k];
+    for (const k of Object.keys(M.kontrol)) if (k < kontrolSinir) delete M.kontrol[k];
     for (const k of Object.keys(M.liste)) if (k < listeSinir) delete M.liste[k];
     save();
   }

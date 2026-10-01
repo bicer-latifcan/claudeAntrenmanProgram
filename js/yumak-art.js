@@ -482,7 +482,7 @@ export function sleep(g, st) {
   tube(g, [18, 76], [12, 88], [54, 84], 5.6, 4.6, M.TAIL);
   ellipse(g, 40, 71 - br * 0.6, 26, 13.5 + br * 0.6, M.FUR, { ox: 40, oy: 71 });
   ellipse(g, 61, 75, 8, 6, M.RUFF, { ox: 61, oy: 75 });
-  headFront(g, 60, 64, 0.8, { ...st, eyes: 'closed', mouth: 'closed' });
+  headFront(g, 60, 64, 0.8, { ...st, eyes: st.eyes || 'closed', mouth: st.mouth || 'closed' });
   paw(g, 67, 80, false, 5, 2.6);
   return shade(g, PAT);
 }

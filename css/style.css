@@ -232,6 +232,7 @@ body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], bo
 
 /* ---------- dar ekran ---------- */
 /* ---------- sekmeler ---------- */
+[hidden] { display: none !important; } /* gizli sekme, display kuralları olsa da görünmesin */
 .tabs { display: flex; gap: 10px; padding-bottom: 4px; }
 .tab { font: 600 17px/1 var(--font-pixel); color: var(--ink); background: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 9px 14px 9px 10px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .tab canvas { width: 26px; height: 26px; }

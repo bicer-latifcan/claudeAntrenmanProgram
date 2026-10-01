@@ -81,7 +81,17 @@ async function planGetir() {
   try { return new Function(src.replace(/^export\s+/gm, '') + '\nreturn { AYARLAR, TAKVIM, ANTRENMANLAR, YUMAK_SOZLER };')(); }
   catch (e) { return null; }
 }
+// her ruh hâlinin birkaç pozu var: widget her yenilendiğinde biri seçilir (widget'lar hareket edemiyor, Yumak böyle canlı kalır)
+const VARYANT = {
+  uzgun: ['uzgun', 'uzgun2', 'uzgun3', 'uzgun4'],
+  dram: ['dram', 'dram2', 'dram3'],
+  tamam: ['tamam', 'tamam2', 'tamam3', 'tamam5', 'bitti'],
+  parti: ['parti', 'parti2'],
+  dinlenme: ['dinlenme', 'dinlenme2', 'dinlenme3'],
+  bekle: ['bekle', 'bekle2'],
+};
 async function resim(ad) {
+  if (VARYANT[ad]) ad = rastgele(VARYANT[ad]);
   const p = yol(`${ad}-v${RESIM_SURUM}.png`);
   try { if (fm.fileExists(p)) return fm.readImage(p); } catch (e) { /* bozuk */ }
   try { const r = new Request(`${SITE}widget/${ad}.png?v=${RESIM_SURUM}`); r.timeoutInterval = 12; const img = await r.loadImage(); fm.writeImage(p, img); return img; }
@@ -104,7 +114,7 @@ function gunBilgi(plan, w, d) {
 }
 function soz(plan, anahtar, sakaSans = 0.3, degis = {}) {
   const S = (plan && plan.YUMAK_SOZLER) || {};
-  let havuz = S[anahtar] || [];
+  let havuz = [].concat(...[].concat(anahtar).map((k) => S[k] || []));
   if (Math.random() < sakaSans) havuz = havuz.concat(S.sakalar || []);
   const temiz = havuz.map((s) => s.replace(/<[^>]+>/g, '')).filter((s) => s.length <= 96);
   const sec = temiz.length ? rastgele(temiz) : 'Mrrr!';
@@ -169,8 +179,13 @@ async function modelKur(baglanti) {
   if (kutlama) { resimAd = 'parti'; sozu = kutlama; kisa = `${n} gün! Parti!`; }
   else if (dinlenme) { resimAd = 'dinlenme'; sozu = n > 0 ? soz(plan, 'seriDinlenme', 0, degis) : soz(plan, 'seriDinlenmeYeni', 0); kisa = n > 0 ? `Dinlen, zincir ${n}` : 'Dinlen, yarın başla'; }
   else if (tamam) { resimAd = 'tamam'; sozu = soz(plan, 'seriTamam', 0, degis); kisa = `${n} gündür! Mırr`; }
-  else if (n > 0) { resimAd = aksam ? 'dram' : 'uzgun'; sozu = soz(plan, aksam ? 'seriAksam' : 'seriBekliyor', 0, degis); kisa = `Yaparsan ${n + 1}! 🥺`; }
-  else if (SR.kirik) { resimAd = 'uzgun'; sozu = soz(plan, 'seriKirildi', 0); kisa = 'Yeniden başla!'; }
+  else if (n > 0) {
+    const turHavuz = b.tur === 'kuvvet' ? 'seriBekliyorKuvvet' : ['yuruyus', 'uzun', 'aralikli'].includes(b.tur) ? 'seriBekliyorYuruyus' : null;
+    resimAd = aksam ? 'dram' : 'uzgun';
+    sozu = soz(plan, aksam ? 'seriAksam' : ['seriBekliyor', turHavuz].filter(Boolean), 0, degis);
+    kisa = `Yaparsan ${n + 1}! 🥺`;
+  }
+  else if (SR.kirik) { resimAd = 'uzgun'; sozu = soz(plan, b.tur === 'kuvvet' ? ['seriKirildi', 'seriBekliyorKuvvet'] : 'seriKirildi', 0, degis); kisa = 'Yeniden başla!'; }
   else { resimAd = 'uzgun'; sozu = soz(plan, 'seriIlk', 0); kisa = 'İlk halkayı tak!'; }
   return {
     ...ortak, durum: 'surec', bilgi: b, tamam, haftaNo: w + 1, renk: b.renk,
