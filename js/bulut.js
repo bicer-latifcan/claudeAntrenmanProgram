@@ -23,7 +23,7 @@ export function linkModu() {
   try {
     const m = location.hash.match(/^#(kod|izle)-([A-Za-z0-9]{24,})(?:~(\w+))?$/);
     if (m) {
-      history.replaceState(null, '', location.pathname + location.search + (m[3] === 'mutfak' ? '#mutfak' : ''));
+      history.replaceState(null, '', location.pathname + location.search + (m[3] === 'mutfak' || m[3] === 'arsiv' ? `#${m[3]}` : ''));
       if (m[1] === 'izle') { localStorage.setItem(IZLE_KEY, m[2]); return { kod: m[2], izle: true, yeni: false, sekme: m[3] }; }
       const eski = localStorage.getItem(KOD_KEY);
       localStorage.setItem(KOD_KEY, m[2]); localStorage.removeItem(IZLE_KEY);
@@ -74,10 +74,10 @@ export async function yukle(kod, veri) {
    widget ve izleme linki aynı kayıtla çalışmaya devam eder. Widget aynı hesabı kendi içinde yapar. */
 const GIRIS_KEY = 'yumak-giris';
 export const GIRIS_TUZ = 'yumak-8-hafta:giris:v1', GIRIS_TEKRAR = 30000;
-export async function turet(sifre) {
+export async function turet(sifre, tuz = GIRIS_TUZ, tekrar = GIRIS_TEKRAR) {
   const enc = new TextEncoder();
   const anahtar = await crypto.subtle.importKey('raw', enc.encode(String(sifre).normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
-  const b = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(GIRIS_TUZ), iterations: GIRIS_TEKRAR, hash: 'SHA-256' }, anahtar, 256));
+  const b = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(tuz), iterations: tekrar, hash: 'SHA-256' }, anahtar, 256));
   let s = ''; for (let i = 0; i < 28; i++) s += ABC[b[i] % ABC.length];
   return s;
 }
@@ -107,4 +107,66 @@ export async function sifreOlustur(sifre, hedefKod, ilkVeri) {
 }
 export function cikisYap(anahtarlar = []) {
   for (const k of [KOD_KEY, IZLE_KEY, GIRIS_KEY, 'yumak-ilk-baglanti', 'yumak-uygulama-karsilandi', ...anahtarlar]) try { localStorage.removeItem(k); } catch { /* yok */ }
+}
+
+/* ---------- admin paneli için kayıt defteri ----------
+   Şifreyle giren her cihaz, kendi kodunu ortak bir deftere ŞİFRELİ olarak ekler. Defteri sadece admin
+   şifresiyle açılan özel anahtar çözebilir; defteri okuyan biri kodları göremez. Admin paneli kayıtları
+   sadece okur. Biri defteri bozsa bile her cihaz günde bir kez kendi kaydını kontrol edip geri ekler. */
+// Admin panelinin kurulumda verdiği açık anahtar (gizli değildir). Boşken kimse kaydedilmez.
+export const ADMIN_ANAHTAR = null;
+const YEREL = typeof location !== 'undefined' && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
+export const DEFTER = YEREL ? 'TestDefteriYumakAyHiXa2345PQ' : 'KayitDefteriYumakAyHiXa2345P';
+export function adminAnahtari() { // yerelde denemek için test anahtarı kullanılabilir
+  if (ADMIN_ANAHTAR) return ADMIN_ANAHTAR;
+  if (!YEREL) return null;
+  try { return JSON.parse(localStorage.getItem('yumak-test-admin-anahtar') || 'null'); } catch { return null; }
+}
+export const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+export const b64Oku = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+export async function defterOku() {
+  const r = await fetch(adres(DEFTER), { cache: 'no-store', signal: zamanAsimi(8000) });
+  if (r.status === 404) return { liste: [], guncel: null };
+  if (!r.ok) throw new Error('defter-okuma-' + r.status);
+  const j = await r.json();
+  let liste = [];
+  try { liste = JSON.parse(j.fields.veri.stringValue).kayitlar || []; } catch { /* bozuk defter: baştan */ }
+  return { liste: Array.isArray(liste) ? liste : [], guncel: j.updateTime };
+}
+async function defterYaz(liste, guncel) { // aynı anda yazan olursa (updateTime değişmişse) reddedilir
+  const body = { fields: { veri: { stringValue: JSON.stringify({ kayitlar: liste }) }, zaman: { integerValue: String(Date.now()) } } };
+  const on = guncel ? `&currentDocument.updateTime=${encodeURIComponent(guncel)}` : '&currentDocument.exists=false';
+  const r = await fetch(adres(DEFTER) + '&updateMask.fieldPaths=veri&updateMask.fieldPaths=zaman' + on, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: zamanAsimi(8000),
+  });
+  if (!r.ok) throw new Error('defter-yazma-' + r.status);
+}
+async function sifrele(pub, nesne) { // ECDH (P-256) ile tek kullanımlık anahtar + AES-GCM
+  const pk = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: pub.x, y: pub.y, ext: true }, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+  const gecici = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']);
+  const k = await crypto.subtle.deriveKey({ name: 'ECDH', public: pk }, gecici.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const c = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(nesne)));
+  return { e: b64(await crypto.subtle.exportKey('raw', gecici.publicKey)), iv: b64(iv), c: b64(c) };
+}
+function cihazAdi() {
+  const u = navigator.userAgent, uyg = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const ad = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Macintosh/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : 'Diğer';
+  return uyg ? `${ad} (uygulama)` : ad;
+}
+// giriş yapmış cihaz: deftere kayıtlı mı bak, değilse ekle (günde en fazla bir kez kontrol)
+export async function kaydol(kod) {
+  const pub = adminAnahtari(); if (!pub || !kod || !hazir()) return;
+  let yerel = null; try { yerel = JSON.parse(localStorage.getItem('yumak-kayit') || 'null'); } catch { /* yok */ }
+  const gun = new Date().toDateString(), ayni = yerel && yerel.kod === kod && yerel.anahtar === pub.x;
+  if (ayni && yerel.kontrol === gun) return;
+  for (let deneme = 0; deneme < 3; deneme++) {
+    const d = await defterOku();
+    if (ayni && d.liste.some((k) => k && k.id === yerel.id)) { localStorage.setItem('yumak-kayit', JSON.stringify({ ...yerel, kontrol: gun })); return; }
+    const id = b64(crypto.getRandomValues(new Uint8Array(9))), t = ayni ? yerel.t : Date.now();
+    d.liste.push({ id, ...(await sifrele(pub, { kod, t, cihaz: cihazAdi() })) });
+    try { await defterYaz(d.liste, d.guncel); } catch { continue; } // biri aynı anda yazdıysa tekrar oku
+    localStorage.setItem('yumak-kayit', JSON.stringify({ id, kod, anahtar: pub.x, kontrol: gun, t }));
+    return;
+  }
 }

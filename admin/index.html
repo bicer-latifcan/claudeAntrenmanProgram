@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Yumak · Admin paneli</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Pixelify+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body { padding-bottom: 40px; }
+  .ad-wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px; display: grid; gap: 22px; }
+  .ad-giris { max-width: 460px; justify-self: center; display: grid; gap: 10px; }
+  .ad-giris h1, .ad-bas h1 { margin: 0; font: 700 32px/1.1 var(--font-pixel); }
+  .ad-yumak { width: 120px; height: 120px; justify-self: center; }
+  .ad-form { display: grid; gap: 10px; }
+  .ad-form input { font: 600 18px/1.2 var(--font-body); padding: 10px 12px; border: 3px solid var(--ink); background: #fff; color: var(--ink); width: 100%; }
+  .ad-oneri { justify-content: flex-start; }
+  .ad-bas { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .ad-bas .muted { margin: 4px 0 0; }
+  .ad-uyari { background: var(--butter); display: grid; gap: 10px; }
+  .ad-uyari h2 { margin: 0; }
+  .ad-anahtar { display: block; word-break: break-all; font: 500 13px/1.4 ui-monospace, monospace; background: #fff; border: 2px dashed var(--ink); padding: 8px; user-select: all; }
+  .ad-liste { display: grid; gap: 22px; }
+  .ad-kart { display: grid; gap: 14px; }
+  .ad-kart h2 { margin: 0; font: 800 22px/1.2 var(--font-body); }
+  .ad-kart h3 { margin: 0 0 6px; font: 700 16px/1.2 var(--font-pixel); }
+  .ad-kart .eyebrow { margin: 0; }
+  .ad-kart .muted { margin: 2px 0 0; }
+  .ad-durum { margin: 0; background: var(--lilac); border: 2px solid var(--ink); padding: 8px 10px; }
+  .ad-ok { color: #1f8a52; } .ad-bekle { color: #c2335f; }
+  .ad-sayilar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .ad-sayilar div { border: 3px solid var(--ink); background: #fff; padding: 8px 10px; display: grid; gap: 2px; }
+  .ad-sayilar b { font: 800 24px/1 var(--font-body); }
+  .ad-sayilar span { font-size: 13px; color: var(--ink-soft); line-height: 1.2; }
+  .ad-aylar { display: grid; grid-template-columns: repeat(8, minmax(0, 30px)); gap: 6px; }
+  .ad-aylar canvas { width: 100%; height: auto; aspect-ratio: 1; }
+  .ad-takvim { display: grid; grid-template-columns: repeat(28, minmax(0, 1fr)); gap: 3px; }
+  .ad-g { aspect-ratio: 1; border: 2px solid var(--ink); background: #fff; }
+  .ad-x { background: var(--pink); } .ad-d { background: var(--lilac); border-color: #b8a8e8; } .ad-k { background: #e8ddd5; border-color: #b9a9a0; }
+  .ad-bugun { outline: 3px solid #ffd84d; outline-offset: 1px; }
+  .ad-iki { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ad-mini, .ad-agir, .ad-turlar { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 15px; }
+  .ad-agir li, .ad-turlar li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 2px dashed #e8d9ce; padding-bottom: 4px; }
+  .ad-agir em { font-style: normal; color: #1f8a52; }
+  .ad-kucuk { margin: 6px 0 0; font-size: 14px; }
+  @media (max-width: 640px) {
+    .ad-sayilar { grid-template-columns: 1fr 1fr; }
+    .ad-iki { grid-template-columns: 1fr; }
+    .ad-takvim { grid-template-columns: repeat(14, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="sky" aria-hidden="true"></div>
+<main class="ad-wrap" id="panel"><p class="muted">Yükleniyor…</p></main>
+<script type="module" src="../js/admin.js"></script>
+</body>
+</html>

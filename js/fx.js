@@ -1,5 +1,5 @@
 // Piksel simgeler ve uçuşan efektler (kalp, yıldız, ünlem...)
-import { iconCanvas, Grid, M, limb, line, shade, paint } from './pixel.js';
+import { iconCanvas, Grid, M, limb, line, shade, paint, vnoise } from './pixel.js';
 
 // Koca yeşil tik: kalın piksel çizgi, koyu yeşil kenar, beyaz çıkartma çerçevesi
 let checkCache = null;
@@ -358,4 +358,22 @@ export function drawHomeItems({ food, water, litter }) {
     if (litter > 0.5) { R(ctx, 12, 3, 4, 2, '#8a6a4a'); }
     R(ctx, 4, 9, 24, 1, '#f2b88c');
   });
+}
+
+/* ---------- ay çizimi (evre k: 0 yeni ay → 1 dolunay) ---------- */
+export function drawMoon(canvas, k, size = 16, waxing = true) {
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(size, size), r = size / 2 - 1.2, c = size / 2;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const dx = (x + 0.5 - c) / r, dy = (y + 0.5 - c) / r, dd = dx * dx + dy * dy;
+    let col = null;
+    if (dd <= 1) {
+      const tx = Math.sqrt(1 - dy * dy), p = dx / (tx || 1);
+      const lit = waxing ? p > 1 - 2 * k : p < -(1 - 2 * k);
+      const crater = vnoise(x / (size / 12), y / (size / 12), 41) > 0.68;
+      col = lit ? (crater ? [243, 223, 162] : [255, 244, 201]) : (crater ? [156, 142, 206] : [172, 158, 219]);
+    } else if (dd <= (1 + 2.4 / r)) col = [61, 42, 63];
+    if (col) { const i = (y * size + x) * 4; img.data.set([...col, 255], i); }
+  }
+  ctx.putImageData(img, 0, 0);
 }

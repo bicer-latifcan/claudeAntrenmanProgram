@@ -244,7 +244,7 @@ async function modelKur(baglanti) {
     return { ...ortak, durum: 'bitti', resim: 'bitti', ust: '8 HAFTA TAMAM', baslik: 'Dolunay!', alt: `${tamamSay}/${gunSay} gün · en uzun zincir ${SR.rekor}`,
       soz: SR.rekor >= 56 && plan.YUMAK_SOZLER.seriRekor ? plan.YUMAK_SOZLER.seriRekor[56] : soz(plan, 'seriBitti', 0, { n: SR.rekor }),
       seriYandi: SR.rekor > 0, seri: SR.rekor, seriKisa: `En uzun zincir: ${SR.rekor}`,
-      satir: 'Dolunay! 8 hafta tamam', hafta: haftaKur(plan.AYARLAR.haftaSayisi - 1, 7), haftaNo: plan.AYARLAR.haftaSayisi, renk: 'dinlenme' };
+      satir: 'Dolunay! Hikâyen hazır, siteyi aç', hafta: haftaKur(plan.AYARLAR.haftaSayisi - 1, 7), haftaNo: plan.AYARLAR.haftaSayisi, renk: 'dinlenme' };
   }
   const w = Math.floor(fark / 7), d = fark % 7, b = gunBilgi(plan, w, d), tamam = !!done[`h${w + 1}g${d + 1}`];
   const dinlenme = b.tur === 'dinlenme', n = SR.seri, aksam = simdi.getHours() >= 18, degis = { n, m: n + 1 };

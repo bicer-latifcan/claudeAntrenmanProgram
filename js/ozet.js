@@ -1,18 +1,15 @@
-// "Ay nasıl geçti?": tur sonu özeti ve arşiv. Program bitince açılır; "Yeni tura başla" turu arşive koyar.
+// "Ay nasıl geçti?": tur sonu özeti ve arşiv. Tur bitince hikâye açılır; sonuna gelinince tur
+// kendiliğinden arşive kaydedilir ve takvim sıfırlanır (yeni başlangıç son sahnede sorulur).
 import { AYARLAR, TAKVIM, HAREKETLER } from './program.js';
 import { OGUNLER } from './mutfak-veri.js';
-import { hearts, sparkles } from './fx.js';
-import { Grid, paint } from './pixel.js';
-import * as Y from './yumak-art.js';
+import { hikayeVerisi, hikayeAc, resimYap, kaydet, baslangicSecenekleri } from './hikaye.js';
 
-const AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const isoTarih = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const tarihOku = (s) => { const [y, m, g] = String(s).split('-').map(Number); return new Date(y, m - 1, g); };
 const gunEkle = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const tarihYaz = (d) => `${d.getDate()} ${AY[d.getMonth()]}`;
-const sayi = (n) => n.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
 
 // bir turun özetini hesapla: t = { start, done, sets, kgGun, walk, mutfak }
+// t.bugun: turun kaçıncı günündeyiz (ara özet için; geçen gün sayısı buna göre)
 export function ozetHesapla(t) {
   const N = AYARLAR.haftaSayisi * 7, done = t.done || {}, walk = t.walk || {};
   const anahtar = (i) => `h${Math.floor(i / 7) + 1}g${(i % 7) + 1}`, gun = (i) => TAKVIM[Math.floor(i / 7)][i % 7];
@@ -66,102 +63,68 @@ export function ozetHesapla(t) {
     if (en) favori[o] = { ad: OGUNLER[o].secenekler[en[0]]?.ad || en[0], kez: en[1] };
   }
   return {
+    gunler: gunlerDizisi(done), gecen: t.bugun == null ? null : gecenSay(t.bugun),
     start: t.start, bitis: isoTarih(gunEkle(bas, N - 1)), tamam, toplam, kuvvet, kuvvetTop, yuruDk, yemekYuru, rekor, setSay, haftalar, agirlik,
     mutfak: { kayitliGun, suOrt: kayitliGun ? suTop / kayitliGun : 0, su8, sebze3, proteinTam, sekersiz, favori },
   };
 }
 
-function yorum(o) {
-  const y = o.toplam ? o.tamam / o.toplam : 0;
-  if (y >= 0.9) return 'Efsane bir tur! Sekiz ayın sekizi de doldu, ben de gururdan doldum. Mrrr.';
-  if (y >= 0.7) return 'Harika geçti! Çoğu günü tamamladın; kaslar da, ben de çok mutluyuz.';
-  if (y >= 0.4) return 'Güzel bir tur. Her tamamlanan gün bir kazanç; ikinci turda daha da parlarız.';
-  if (y > 0) return 'Başladın ve devam ettin, en önemlisi bu. Yeni tur seni bekliyor, ben de yanındayım.';
-  return 'Bu tur pek işaretleme yapılmamış. Olsun! Yeni bir başlangıç her zaman mümkün.';
+// 56 günlük harita: x = tamamlandı, d = dinlenme, o = yapılmadı (hikâyedeki takvim için)
+export function gunlerDizisi(done = {}) {
+  let s = '';
+  for (let i = 0; i < AYARLAR.haftaSayisi * 7; i++) s += TAKVIM[Math.floor(i / 7)][i % 7].tur === 'dinlenme' ? 'd' : done[`h${Math.floor(i / 7) + 1}g${(i % 7) + 1}`] ? 'x' : 'o';
+  return s;
+}
+function gecenSay(bugun) { // bugüne kadar (bugün dahil) dinlenme olmayan gün sayısı
+  let n = 0; for (let i = 0; i <= Math.min(bugun, AYARLAR.haftaSayisi * 7 - 1); i++) if (TAKVIM[Math.floor(i / 7)][i % 7].tur !== 'dinlenme') n++;
+  return n;
 }
 
-export function initOzet({ state, save, drawMoon, renderAll, izle }) {
-  const dlg = document.getElementById('ozetSheet'), govde = document.getElementById('ozetBody');
-  state.arsiv ||= [];
-
-  function ciz(o, { baslik, arsivde, araOzet }) {
-    const yuzde = o.toplam ? Math.round(o.tamam / o.toplam * 100) : 0, m = o.mutfak;
-    const kutu = (deger, ad) => `<div class="oz-kutu"><b>${deger}</b><span>${ad}</span></div>`;
-    govde.innerHTML = `
-      <div class="oz-bas"><div>
-        <p class="eyebrow">${baslik}</p>
-        <h2 id="ozetTitle">${araOzet ? 'Şimdiye kadar nasıl gidiyor?' : 'Ay nasıl geçti?'}</h2>
-        <p class="muted">${tarihYaz(tarihOku(o.start))} – ${tarihYaz(tarihOku(o.bitis))}</p>
-      </div><canvas class="pix oz-yumak" width="88" height="88" aria-hidden="true"></canvas></div>
-      <div class="oz-aylar" aria-label="Haftalık aylar">${o.haftalar.map((k, i) => `<span class="oz-ay"><canvas class="pix" data-ay="${k}"></canvas><small>H${i + 1}</small></span>`).join('')}</div>
-      <div class="oz-izgara">
-        ${kutu(`${o.tamam}/${o.toplam}`, `gün tamamlandı (%${yuzde})`)}
-        ${kutu(`🔥 ${o.rekor}`, 'günlük en uzun zincir')}
-        ${kutu(`${o.kuvvet}/${o.kuvvetTop}`, 'kuvvet günü')}
-        ${kutu(sayi(o.yuruDk), 'dakika yürüyüş')}
-        ${kutu(o.setSay, 'set')}
-        ${kutu(o.yemekYuru, 'yemek sonrası yürüyüş')}
-      </div>
-      ${o.agirlik.length ? `<h3 class="oz-alt">Ağırlıklar</h3><ul class="oz-liste">${o.agirlik.map((a) => `<li><span>${a.ad}</span><b>${sayi(a.ilk)} → ${sayi(a.son)} kg${a.fark > 0 ? ` <em>+${sayi(a.fark)}</em>` : ''}</b></li>`).join('')}</ul>` : ''}
-      ${m.kayitliGun ? `<h3 class="oz-alt">Mutfak</h3><ul class="oz-liste">
-        <li><span>Ortalama su</span><b>${sayi(m.suOrt)} bardak/gün</b></li>
-        <li><span>8 bardak su içilen gün</span><b>${m.su8}</b></li>
-        <li><span>Sebze hedefi tutan gün</span><b>${m.sebze3}</b></li>
-        <li><span>Her öğünde protein</span><b>${m.proteinTam} gün</b></li>
-        <li><span>Şekerli içecek içilmeyen gün</span><b>${m.sekersiz}</b></li>
-        ${Object.entries(m.favori).map(([og, f]) => `<li><span>En sevilen ${og === 'kahvalti' ? 'kahvaltı' : og === 'ara' ? 'ara öğün' : 'akşam yemeği'}</span><b>${f.ad} (${f.kez} kez)</b></li>`).join('')}
-      </ul>` : ''}
-      <p class="oz-yorum"><b>Yumak:</b> ${yorum(o)}</p>
-      ${!arsivde && !araOzet && !izle ? `<div class="oz-yeni">
-        <h3 class="oz-alt">Yeni tur</h3>
-        <p class="muted">Bu tur arşive kaydedilir (özetini ayarlardan her zaman açabilirsin), takvim yeni tarihten sıfırdan başlar. Son kullandığın ağırlıklar hatırlanır.</p>
-        <label class="field">Yeni başlangıç<input type="date" id="ozetTarih" value="${isoTarih(sonrakiPazartesi())}"></label>
-      </div>` : ''}
-      <div class="row-end">
-        ${!arsivde && !araOzet && !izle ? '<button type="button" class="pbtn primary" id="ozetYeni">Arşivle ve yeni tura başla</button>' : ''}
-        <button type="button" class="pbtn" id="ozetKapat">Kapat</button>
-      </div>`;
-    for (const c of govde.querySelectorAll('canvas[data-ay]')) drawMoon(c, +c.dataset.ay, 16);
-    { // tur bitti: parti şapkalı Yumak; ara özet: el sallayan Yumak
-      const g = new Grid(Y.W, Y.H), iyi = o.toplam && o.tamam / o.toplam >= 0.4;
-      Y.sit(g, { t: 0.4, look: { x: 0, y: 0 }, eyes: 'happy', mouth: 'open', hat: !araOzet && iyi, paws: araOzet ? 'wave' : undefined });
-      paint(govde.querySelector('.oz-yumak'), g);
-    }
-    govde.querySelector('#ozetKapat').onclick = () => dlg.close();
-    const yeni = govde.querySelector('#ozetYeni');
-    if (yeni) yeni.onclick = () => {
-      if (yeni.dataset.emin !== '1') { yeni.dataset.emin = '1'; yeni.textContent = 'Emin misin? Tekrar dokun'; return; }
-      yeniTur(govde.querySelector('#ozetTarih').value);
-    };
-  }
-  // açınca en üstten başlasın (tarih kutusu odak alıp aşağı kaydırmasın)
-  function goster() {
-    if (!dlg.open) dlg.showModal();
-    const h = govde.querySelector('h2'); h.tabIndex = -1; h.focus({ preventScroll: true });
-    govde.scrollTop = 0; dlg.scrollTop = 0;
-  }
-  function sonrakiPazartesi() { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return d; }
+export function initOzet({ state, save, renderAll, izle }) {
+  const N = AYARLAR.haftaSayisi * 7;
+  const bugun0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const bittiMi = () => bugun0() >= gunEkle(tarihOku(state.start), N);
   const turVerisi = () => ({ start: state.start, done: state.done, sets: state.sets, kgGun: state.kgGun, walk: state.walk, mutfak: state.mutfak });
+  const siradaki = () => (state.arsiv?.length || 0) + 1;
 
-  function yeniTur(tarih) {
-    if (izle || !/^\d{4}-\d{2}-\d{2}$/.test(tarih || '')) return;
-    const o = ozetHesapla(turVerisi());
-    state.arsiv.push({ tur: state.arsiv.length + 1, ozet: o, start: state.start, done: state.done, sets: state.sets, kgGun: state.kgGun, walk: state.walk });
-    state.done = {}; state.sets = {}; state.kgGun = {}; state.walk = {}; state.start = tarih; state.ozetGoruldu = null;
-    save(); dlg.close(); renderAll();
-    const r = document.getElementById('today')?.getBoundingClientRect();
-    if (r) { hearts(r.left + r.width / 2, r.top + 20, 3); sparkles(r.left + 40, r.top + 20, 6); }
+  // hikâyenin sonuna gelindi: turu arşive koy, takvimi sıfırla. Varsayılan başlangıç yeni ay; son sahnede değiştirilebilir.
+  function arsivle(baslangic) {
+    if (izle || !bittiMi()) return;
+    const tur = siradaki();
+    state.arsiv.push({ tur, ozet: ozetHesapla(turVerisi()), start: state.start, done: state.done, sets: state.sets, kgGun: state.kgGun, walk: state.walk });
+    state.done = {}; state.sets = {}; state.kgGun = {}; state.walk = {}; state.start = baslangic; state.ozetGoruldu = null;
+    save(); renderAll();
+  }
+  function veri(kaynak) {
+    if (kaynak === 'tur') return hikayeVerisi(ozetHesapla(turVerisi()), { tur: siradaki() });
+    if (kaynak === 'ara') return hikayeVerisi(ozetHesapla({ ...turVerisi(), bugun: Math.floor((bugun0() - tarihOku(state.start)) / 864e5) }), { tur: siradaki(), ara: true });
+    const a = state.arsiv[kaynak]; if (!a) return null;
+    return hikayeVerisi({ ...a.ozet, gunler: a.ozet.gunler || gunlerDizisi(a.done) }, { tur: a.tur });
+  }
+  const dosya = (kaynak) => `yumak-${kaynak === 'tur' || kaynak === 'ara' ? siradaki() : state.arsiv[kaynak]?.tur}-tur${kaynak === 'ara' ? '-simdiye-kadar' : ''}`;
+
+  // kaynak: 'tur' (biten tur), 'ara' (şimdiye kadar), sayı (arşivdeki tur). basla: 'video' → doğrudan videoya
+  function oynat(kaynak, { basla } = {}) {
+    if (kaynak === 'tur' && !bittiMi()) kaynak = 'ara';
+    const V = veri(kaynak); if (!V) return;
+    let son = null, sonaGelince = null;
+    if (kaynak === 'tur' && !izle) {
+      const sec = baslangicSecenekleri();
+      son = { secenekler: sec, secili: sec[0].tarih, sec: (tarih) => { state.start = tarih; save(); renderAll(); } };
+      sonaGelince = () => arsivle(sec[0].tarih);
+    }
+    return hikayeAc(V, { son, sonaGelince, dosyaAdi: dosya(kaynak), basla });
   }
   return {
-    // tur bittiyse özeti göster (her tur için bir kez kendiliğinden)
+    bittiMi, veri,
+    oynat,
+    async resim(kaynak) { const V = veri(kaynak); if (V) return kaydet(await resimYap(V), `${dosya(kaynak)}.png`); },
+    // tur bittiyse hikâyeyi kendiliğinden aç (izlenip arşivlenene kadar günde bir kez)
     bittiyse() {
-      const bitis = gunEkle(tarihOku(state.start), AYARLAR.haftaSayisi * 7), bugun = new Date(); bugun.setHours(0, 0, 0, 0);
-      if (bugun < bitis || izle || state.ozetGoruldu === state.start) return;
-      state.ozetGoruldu = state.start; save();
-      this.ac();
+      if (izle || !bittiMi()) return;
+      const g = isoTarih(new Date()); if (state.ozetGoruldu === g) return;
+      state.ozetGoruldu = g; save();
+      oynat('tur');
     },
-    ac() { ciz(ozetHesapla(turVerisi()), { baslik: `${state.arsiv.length + 1}. tur` }); goster(); },
-    ara() { ciz(ozetHesapla(turVerisi()), { baslik: `${state.arsiv.length + 1}. tur · ara özet`, araOzet: true }); goster(); },
-    arsiv(i) { const a = state.arsiv[i]; if (!a) return; ciz(a.ozet, { baslik: `${a.tur}. tur · arşiv`, arsivde: true }); goster(); },
   };
 }

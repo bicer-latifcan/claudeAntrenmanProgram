@@ -1,10 +1,11 @@
 // Uygulama: takvim, gün ayrıntısı, ilerleme, gökyüzü. Yumak'ı başlatır.
 import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YUMAK_SOZLER, ETKINLIK_SOZLER, DAMBIL_MAKS } from './program.js';
-import { icon, drawHomeItems, hearts, sparkles, checkCanvas } from './fx.js';
+import { icon, drawHomeItems, hearts, sparkles, checkCanvas, drawMoon } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
 import { initMutfak } from './mutfak.js';
 import { initOzet } from './ozet.js';
+import { initArsiv } from './arsiv.js';
 import { mountAnim } from './tarcin.js';
 import * as bulut from './bulut.js';
 
@@ -100,23 +101,6 @@ export function describeDay(w, d) { // Yumak'ın takvimde söyledikleri
   }
 }
 
-/* ---------- ay çizimi (evre k: 0 yeni ay → 1 dolunay) ---------- */
-export function drawMoon(canvas, k, size = 16, waxing = true) {
-  canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d'), img = ctx.createImageData(size, size), r = size / 2 - 1.2, c = size / 2;
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const dx = (x + 0.5 - c) / r, dy = (y + 0.5 - c) / r, dd = dx * dx + dy * dy;
-    let col = null;
-    if (dd <= 1) {
-      const tx = Math.sqrt(1 - dy * dy), p = dx / (tx || 1);
-      const lit = waxing ? p > 1 - 2 * k : p < -(1 - 2 * k);
-      const crater = vnoise(x / (size / 12), y / (size / 12), 41) > 0.68;
-      col = lit ? (crater ? [243, 223, 162] : [255, 244, 201]) : (crater ? [156, 142, 206] : [172, 158, 219]);
-    } else if (dd <= (1 + 2.4 / r)) col = [61, 42, 63];
-    if (col) { const i = (y * size + x) * 4; img.data.set([...col, 255], i); }
-  }
-  ctx.putImageData(img, 0, 0);
-}
 function skyMoon() {
   const jd = Date.now() / 864e5 + 2440587.5;
   const phase = ((jd - 2451550.1) / 29.530588853) % 1, k = (1 - Math.cos(2 * Math.PI * phase)) / 2;
@@ -160,7 +144,7 @@ function renderHero() {
     el.className = 'today t-dinlenme';
     el.innerHTML = before
       ? `<span class="t-label">Program ${s.getDate()} ${AY[s.getMonth()]} ${gunAdi(s)} başlıyor</span><span class="t-title">Isınmaya hazır mısın?</span><div class="row"><button class="pbtn primary" data-open="0,0">İlk günü aç</button></div>`
-      : `<span class="t-label">${state.arsiv?.length ? `${state.arsiv.length + 1}. tur · ` : ''}8 hafta tamamlandı</span><span class="t-title">Dolunay! Tebrikler.</span><div class="row"><button class="pbtn primary" data-ozet="ac">Ay nasıl geçti? Özeti gör</button></div>`;
+      : `<span class="t-label">${state.arsiv?.length ? `${state.arsiv.length + 1}. tur · ` : ''}8 hafta tamamlandı</span><span class="t-title">Dolunay! Tebrikler.</span><div class="row"><button class="pbtn primary" data-hikaye="tur">▶ Ay nasıl geçti? Hikâyeni izle</button></div>`;
   } else {
     const i = dayInfo(t.w, t.d), dt = dayDate(t.w, t.d), done = state.done[key(t.w, t.d)];
     el.className = `today ${i.cls}`;
@@ -395,8 +379,7 @@ document.getElementById('loadBackup').addEventListener('click', () => {
 
 document.addEventListener('click', (e) => {
   const o = e.target.closest('[data-open]'); if (o) { const [w, d] = o.dataset.open.split(',').map(Number); openDay(w, d); }
-  const oz = e.target.closest('[data-ozet]');
-  if (oz) { const v = oz.dataset.ozet; if (v === 'ac') ozet.ac(); else if (v === 'ara') ozet.ara(); else ozet.arsiv(+v); }
+  if (e.target.closest('[data-hikaye]')) ozet.oynat('tur');
 });
 
 /* ---------- ses ---------- */
@@ -457,48 +440,41 @@ function renderIzle() {
 }
 
 /* ---------- başlat ---------- */
-function renderAll() { renderHero(); renderCalendar(); renderTurlar(); if (mutfak && sekme === 'mutfak') mutfak.ciz(); }
-// ayarlarda turlar: şimdiye kadarki özet ve arşivdeki eski turlar
-function renderTurlar() {
-  const box = document.getElementById('turBox'); if (!box) return;
-  const a = state.arsiv || [];
-  box.innerHTML = `<strong class="sec-title">Turlar</strong>
-    <p class="muted">${a.length ? `${a.length} tur arşivde. Şu an ${a.length + 1}. turdasın.` : 'İlk turdasın. 8 hafta bitince "Ay nasıl geçti?" özeti gelir ve tur arşive kaydedilir.'}</p>
-    <div class="row-end"><button type="button" class="pbtn small" data-ozet="ara">Şimdiye kadarki özet</button>
-    ${a.map((t, i) => `<button type="button" class="pbtn small" data-ozet="${i}">${t.tur}. tur özeti</button>`).join('')}</div>`;
-}
+function renderAll() { renderHero(); renderCalendar(); if (mutfak && sekme === 'mutfak') mutfak.ciz(); if (arsiv && sekme === 'arsiv') arsiv.ciz(); }
 
-/* ---------- sekmeler: Program / Mutfak ---------- */
-let mutfak = null, sekme = 'program';
-const ozet = initOzet({ state, save, drawMoon, renderAll: () => renderAll(), izle: IZLE });
+/* ---------- sekmeler: Program / Mutfak / Arşiv ---------- */
+let mutfak = null, arsiv = null, sekme = 'program';
+const SEKMELER = { program: 'sayfaProgram', mutfak: 'sayfaMutfak', arsiv: 'sayfaArsiv' };
+const hashSekme = () => (location.hash === '#mutfak' ? 'mutfak' : location.hash === '#arsiv' ? 'arsiv' : 'program');
+const ozet = initOzet({ state, save, renderAll: () => renderAll(), izle: IZLE });
 function sekmeAc(ad, gecmis = true) {
-  sekme = ad === 'mutfak' ? 'mutfak' : 'program';
-  const m = sekme === 'mutfak';
-  document.getElementById('sayfaProgram').hidden = m;
-  document.getElementById('sayfaMutfak').hidden = !m;
+  sekme = SEKMELER[ad] ? ad : 'program';
+  for (const [k, id] of Object.entries(SEKMELER)) document.getElementById(id).hidden = k !== sekme;
   for (const b of document.querySelectorAll('.tab')) { const on = b.dataset.sekme === sekme; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
-  if (m) { mutfak ||= initMutfak({ state, save, izle: IZLE }); mutfak.ciz(); }
-  const hedef = m ? '#mutfak' : location.pathname + location.search;
-  if (gecmis && (location.hash === '#mutfak') !== m) history.pushState(null, '', hedef);
+  if (sekme === 'mutfak') { mutfak ||= initMutfak({ state, save, izle: IZLE }); mutfak.ciz(); }
+  if (sekme === 'arsiv') { arsiv ||= initArsiv({ state, ozet, izle: IZLE }); arsiv.ciz(); }
+  if (gecmis && hashSekme() !== sekme) history.pushState(null, '', sekme === 'program' ? location.pathname + location.search : `#${sekme}`);
   scrollTo({ top: 0 });
   window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'sekme', ad: sekme } }));
 }
 for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => sekmeAc(b.dataset.sekme));
-addEventListener('popstate', () => sekmeAc(location.hash === '#mutfak' ? 'mutfak' : 'program', false));
+addEventListener('popstate', () => sekmeAc(hashSekme(), false));
 function tabIkonlari() {
   for (const [id, ad] of [['tabProgram', 'dumbbell'], ['tabMutfak', 'kase']]) { const c = document.getElementById(id), i = icon(ad, 1); c.width = i.width; c.height = i.height; c.getContext('2d').drawImage(i, 0, 0); }
+  drawMoon(document.getElementById('tabArsiv'), 0.7, 16);
 }
 function brand() { const c = document.getElementById('brandIcon'), i = icon('paw', 1); c.getContext('2d').drawImage(i, 4, 3); }
 renderWhy(); renderAll(); skyMoon(); stars(); brand(); tabIkonlari(); syncSound(); renderCloud();
-if (LINK.sekme === 'mutfak' || location.hash === '#mutfak') sekmeAc('mutfak', false);
+if (SEKMELER[LINK.sekme] || hashSekme() !== 'program') sekmeAc(SEKMELER[LINK.sekme] ? LINK.sekme : hashSekme(), false);
 addEventListener('resize', () => stars());
 document.getElementById('settingsBtn').addEventListener('click', renderCloud);
 (async () => {
   if (await buluttanOku()) { renderAll(); syncSound(); }
   renderCloud(); renderIzle();
+  if (!IZLE && bulut.girisli()) bulut.kaydol(bulutKod).catch(() => {}); // admin panelinin defterine (şifreli) kayıt
   // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
   initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo, sefMi: () => sekme === 'mutfak' });
-  if (!GIRIS_GEREK) ozet.bittiyse(); // tur bittiyse özeti bir kez kendiliğinden aç
+  if (!GIRIS_GEREK) ozet.bittiyse(); // tur bittiyse hikâyeyi kendiliğinden aç (izlenene kadar günde bir kez)
   if (IZLE) setInterval(async () => { if (await buluttanOku()) renderAll(); renderIzle(); }, 60000);
 })();
 document.getElementById('izleRefresh')?.addEventListener('click', async (e) => { e.target.textContent = 'Yenileniyor…'; if (await buluttanOku()) renderAll(); renderIzle(); e.target.textContent = 'Yenile'; });
