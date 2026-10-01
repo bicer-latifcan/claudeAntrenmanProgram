@@ -259,6 +259,20 @@ export function initMutfak({ state, save, izle }) {
     if (u.birim === 'demet') return `${Math.max(1, Math.ceil(u.mik))} demet`;
     return `${Math.ceil(u.mik)} adet`;
   }
+  function listeKapsam(d0) { // listeye giren günler ve yarım seçilmiş günler için uyarı
+    const OGUN_AD = { kahvalti: 'kahvaltı', ara: 'ara öğün', aksam: 'akşam yemeği' };
+    const ad = (d, i) => (i === 0 ? `Bugün (${GUN[gunNo(d)]})` : i === 1 ? `Yarın (${GUN[gunNo(d)]})` : `${GUN[gunNo(d)]} ${d.getDate()} ${AY[d.getMonth()]}`);
+    const gunler = Array.from({ length: 7 }, (_, i) => {
+      const d = gunEkle(d0, i), sec = SIRA.filter((o) => { const id = kayit(d)?.sec?.[o]; return id && OGUNLER[o].secenekler[id]; });
+      return { d, i, sec, eksik: SIRA.filter((o) => !sec.includes(o)) };
+    });
+    const dolu = gunler.filter((g) => g.sec.length), yarim = dolu.filter((g) => g.eksik.length);
+    const gunBtn = (g) => `<button type="button" class="m-gun-link" data-gotur="${isoTarih(g.d)}">${ad(g.d, g.i)}</button>`;
+    const son = gunEkle(d0, 6);
+    const kapsam = `<p class="m-liste-kapsam">Bugünün öğünleri dahil 7 gün: <b>${d0.getDate()} ${AY[d0.getMonth()]} – ${son.getDate()} ${AY[son.getMonth()]}</b>.${dolu.length ? ` Listede ${dolu.length} günün seçimleri var: ${dolu.map(gunBtn).join(', ')}.` : ''}</p>`;
+    const uyari = yarim.length ? `<ul class="m-liste-uyari" role="status">${yarim.map((g) => `<li><b>Dikkat:</b> ${gunBtn(g)} için ${g.eksik.map((o) => OGUN_AD[o]).join(' ve ')} seçilmedi; listede ${g.eksik.length > 1 ? 'bunlar' : 'bu'} yok.</li>`).join('')}</ul>` : '';
+    return kapsam + uyari;
+  }
   function listeKart() {
     const d0 = bugun(), anahtar = isoTarih(d0), tikli = M.liste[anahtar] || {}, urunler = alisveris(d0);
     const gruplar = Object.entries(REYON).map(([r, ad]) => {
@@ -268,9 +282,10 @@ export function initMutfak({ state, save, izle }) {
     }).join('');
     return `<section class="card m-liste" data-platform="card">
       <div class="m-liste-bas">
-        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Bugünden itibaren 7 gün, sadece seçtiğin öğünlere göre. Et, tavuk ve balık çiğ ağırlıkla; bulgur, mercimek, nohut ve makarna kuru ağırlıkla yazılı.</p></div>
+        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Sadece seçtiğin öğünler sayılır. Et, tavuk ve balık çiğ ağırlıkla; bulgur, mercimek, nohut ve makarna kuru ağırlıkla yazılı.</p></div>
         <div class="row-end"><button type="button" class="pbtn small" data-kopyala>Listeyi kopyala</button><button type="button" class="pbtn small ghost" data-temizle>Tikleri temizle</button><button type="button" class="pbtn small ghost" data-secimsil>Seçimleri temizle</button></div>
       </div>
+      ${listeKapsam(d0)}
       ${urunler.size ? `<div class="m-reyonlar">${gruplar}</div>` : '<p class="m-liste-bos">Henüz öğün seçmedin. Önümüzdeki günlerde "Bunu seç"e bastıkça liste kendiliğinden dolar; günleri üstteki oklarla değiştirebilirsin.</p>'}
       <p class="muted m-hep">Evde hep olsun: zeytinyağı, limon, tarçın, karabiber, kimyon, pul biber, yeşil çay, nane çayı.</p>
     </section>`;
@@ -331,6 +346,7 @@ export function initMutfak({ state, save, izle }) {
     const b = e.target.closest('button, input'); if (!b) return;
     const ds = b.dataset, d = secili, r = b.getBoundingClientRect();
     if (ds.gun != null) { const n = +ds.gun; secili = n === 0 ? bugun() : gunEkle(secili, n); acikDegis = null; ciz(); return; }
+    if (ds.gotur) { const [y, m, g] = ds.gotur.split('-').map(Number); secili = new Date(y, m - 1, g); acikDegis = null; ciz(); kok.scrollIntoView({ block: 'start' }); return; }
     if (ds.mit != null) { const i = +ds.mit; if (acikMit.has(i)) acikMit.delete(i); else acikMit.add(i); ciz(); return; }
     if (ds.degis) { acikDegis = acikDegis === ds.degis ? null : ds.degis; ciz(); return; }
     if (ds.kopyala != null) { listeKopyala(b); return; }
