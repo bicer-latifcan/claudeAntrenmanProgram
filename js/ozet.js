@@ -3,6 +3,12 @@
 import { AYARLAR, TAKVIM, HAREKETLER } from './program.js';
 import { OGUNLER } from './mutfak-veri.js';
 import { hikayeVerisi, hikayeAc, resimYap, kaydet, baslangicSecenekleri } from './hikaye.js';
+import { drawMoon } from './fx.js';
+import { Grid, paint } from './pixel.js';
+import * as Y from './yumak-art.js';
+
+const AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const sayi = (n) => Number(n).toLocaleString('tr-TR', { maximumFractionDigits: 1 });
 
 const isoTarih = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const tarihOku = (s) => { const [y, m, g] = String(s).split('-').map(Number); return new Date(y, m - 1, g); };
@@ -80,6 +86,50 @@ function gecenSay(bugun) { // bugüne kadar (bugün dahil) dinlenme olmayan gün
   return n;
 }
 
+// Tur sürerken: hikâye değil, sade özet penceresi (hikâye 8 hafta bitince açılır)
+export function ozetGoster(o, { baslik = '' } = {}) {
+  const top = o.gecen != null ? o.gecen : o.toplam, yuzde = top ? Math.round(o.tamam / top * 100) : 0;
+  const m = o.mutfak || { kayitliGun: 0, favori: {} }, tarih = (s) => { const d = tarihOku(s); return `${d.getDate()} ${AY[d.getMonth()]}`; };
+  const kutu = (deger, ad) => `<div class="oz-kutu"><b>${deger}</b><span>${ad}</span></div>`;
+  const yorum = yuzde >= 85 ? 'Harika gidiyorsun! Takvim pati iziyle doluyor, ben de gururla mırlıyorum.'
+    : yuzde >= 60 ? 'Güzel gidiyor. Birkaç gün kaçtıysa dert değil; zincire kaldığın yerden devam.'
+    : top ? 'Her tamamlanan gün sayılır. Bu hafta küçük bir hedef koyalım: iki gün daha pati izi!' : 'Tur yeni başlıyor. İlk pati izini birlikte basalım!';
+  const dlg = document.createElement('dialog');
+  dlg.className = 'sheet small'; dlg.setAttribute('aria-labelledby', 'ozetBaslik');
+  dlg.innerHTML = `<div class="sheet-inner ozet">
+    <div class="oz-bas"><div>
+      <p class="eyebrow">${baslik}</p>
+      <h2 id="ozetBaslik" tabindex="-1">Şimdiye kadar nasıl gidiyor?</h2>
+      <p class="muted">${tarih(o.start)} – ${tarih(o.bitis)}</p>
+    </div><canvas class="pix oz-yumak" width="88" height="88" aria-hidden="true"></canvas></div>
+    <div class="oz-aylar" aria-label="Haftalık aylar">${o.haftalar.map((k, i) => `<span class="oz-ay"><canvas class="pix" data-ay="${k}"></canvas><small>H${i + 1}</small></span>`).join('')}</div>
+    <div class="oz-izgara">
+      ${kutu(`${o.tamam}/${top}`, `geçen günden tamam (%${yuzde})`)}
+      ${kutu(`🔥 ${o.rekor}`, 'gün en uzun zincir')}
+      ${kutu(`${o.kuvvet}`, 'kuvvet günü')}
+      ${kutu(sayi(o.yuruDk), 'dakika yürüyüş')}
+      ${kutu(o.setSay, 'set')}
+      ${kutu(o.yemekYuru, 'yemek sonrası yürüyüş')}
+    </div>
+    ${o.agirlik?.length ? `<h3 class="oz-alt">Ağırlıklar</h3><ul class="oz-liste">${o.agirlik.map((a) => `<li><span>${a.ad}</span><b>${sayi(a.ilk)} → ${sayi(a.son)} kg${a.fark > 0 ? ` <em>+${sayi(a.fark)}</em>` : ''}</b></li>`).join('')}</ul>` : ''}
+    ${m.kayitliGun ? `<h3 class="oz-alt">Mutfak</h3><ul class="oz-liste">
+      <li><span>Ortalama su</span><b>${sayi(m.suOrt)} bardak/gün</b></li>
+      <li><span>Her öğünde protein</span><b>${m.proteinTam} gün</b></li>
+      <li><span>Sebze hedefi tutan gün</span><b>${m.sebze3}</b></li>
+      <li><span>Şekerli içecek içilmeyen gün</span><b>${m.sekersiz}</b></li>
+    </ul>` : ''}
+    <p class="oz-yorum"><b>Yumak:</b> ${yorum}</p>
+    <p class="muted oz-not">"Ay nasıl geçti?" hikâyesi 8 hafta bitince açılır. 🌙</p>
+    <div class="row-end"><button type="button" class="pbtn" data-kapat>Kapat</button></div>
+  </div>`;
+  for (const c of dlg.querySelectorAll('canvas[data-ay]')) drawMoon(c, +c.dataset.ay, 16);
+  const g = new Grid(Y.W, Y.H); Y.sit(g, { t: 0.4, look: { x: 0, y: 0 }, eyes: 'happy', paws: 'wave' }); paint(dlg.querySelector('.oz-yumak'), g);
+  dlg.querySelector('[data-kapat]').onclick = () => dlg.close();
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.append(dlg); dlg.showModal();
+  dlg.querySelector('h2').focus({ preventScroll: true });
+}
+
 export function initOzet({ state, save, renderAll, izle }) {
   const N = AYARLAR.haftaSayisi * 7;
   const bugun0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -106,6 +156,10 @@ export function initOzet({ state, save, renderAll, izle }) {
   // kaynak: 'tur' (biten tur), 'ara' (şimdiye kadar), sayı (arşivdeki tur). basla: 'video' → doğrudan videoya
   function oynat(kaynak, { basla } = {}) {
     if (kaynak === 'tur' && !bittiMi()) kaynak = 'ara';
+    if (kaynak === 'ara') { // tur bitmeden hikâye yok: sade özet
+      const o = ozetHesapla({ ...turVerisi(), bugun: Math.floor((bugun0() - tarihOku(state.start)) / 864e5) });
+      return ozetGoster(o, { baslik: `${siradaki()}. tur · şimdiye kadar` });
+    }
     const V = veri(kaynak); if (!V) return;
     let son = null, sonaGelince = null;
     if (kaynak === 'tur' && !izle) {

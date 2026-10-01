@@ -4,7 +4,7 @@
 import * as bulut from './bulut.js';
 import { AYARLAR, TAKVIM, ANTRENMANLAR } from './program.js';
 import { OGUNLER } from './mutfak-veri.js';
-import { ozetHesapla } from './ozet.js';
+import { ozetHesapla, ozetGoster } from './ozet.js';
 import { hikayeVerisi, hikayeAc } from './hikaye.js';
 import { drawMoon } from './fx.js';
 import { Grid, paint } from './pixel.js';
@@ -142,7 +142,7 @@ kok.addEventListener('click', (e) => {
   const [i, a] = b.dataset.izle.split(':').map(Number), v = sonVeri[i]?.c?.veri; if (!v) return;
   const t = v.arsiv?.[a];
   if (t) hikayeAc(hikayeVerisi({ ...t.ozet }, { tur: t.tur }), { dosyaAdi: `yumak-${t.tur}-tur` });
-  else hikayeAc(hikayeVerisi(ozetHesapla({ ...v, bugun: gunNo(v) }), { tur: (v.arsiv?.length || 0) + 1, ara: true }), { dosyaAdi: 'yumak-simdiye-kadar' });
+  else ozetGoster(ozetHesapla({ ...v, bugun: gunNo(v) }), { baslik: `${(v.arsiv?.length || 0) + 1}. tur · şimdiye kadar` });
 });
 
 function gunNo(v) { const b = new Date(); b.setHours(0, 0, 0, 0); return Math.floor((b - tarihOku(v.start)) / 864e5); }
@@ -192,7 +192,7 @@ function kart(k, idx) {
     <div class="ad-aylar">${o.haftalar.map((h) => `<canvas class="pix" data-ay="${h}"></canvas>`).join('')}</div>
     ${takvim}
     <div class="ad-iki"><div><h3>Mutfak · bugün</h3>${mutfak}</div><div><h3>Ağırlıklar (bu tur)</h3>${agir}</div></div>
-    <div><h3>Turlar</h3><ul class="ad-turlar">${turlar}${b >= 0 ? `<li><span>${tur}. tur · şimdiye kadar</span><button type="button" class="pbtn small" data-izle="${idx}:-1">▶ Hikâye</button></li>` : ''}</ul></div>
+    <div><h3>Turlar</h3><ul class="ad-turlar">${turlar}${b >= 0 ? `<li><span>${tur}. tur · şimdiye kadar</span><button type="button" class="pbtn small" data-izle="${idx}:-1">Özet</button></li>` : ''}</ul></div>
   </section>`;
 }
 

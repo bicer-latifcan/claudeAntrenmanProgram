@@ -250,6 +250,28 @@ body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], bo
   .kapi-ic > .row-end:last-child .pbtn { width: 100%; justify-content: center; }
 }
 
+/* ---------- tur özeti (tur sürerken) ---------- */
+.ozet h2 { margin: 0; }
+.ozet h2:focus { outline: none; }
+.oz-bas { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.oz-bas p { margin: 0 0 4px; }
+.oz-yumak { width: 104px; height: 104px; flex: none; }
+.oz-aylar { display: grid; grid-template-columns: repeat(8, minmax(0, 34px)); justify-content: space-between; gap: 4px; margin: 6px 0; }
+.oz-ay { display: grid; justify-items: center; gap: 2px; font: 700 12px/1 var(--font-body); }
+.oz-ay canvas { width: 100%; max-width: 34px; height: auto; aspect-ratio: 1; }
+.oz-izgara { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.oz-kutu { border: 3px solid var(--ink); background: #fff; padding: 10px; display: grid; gap: 4px; }
+.oz-kutu b { font: 800 24px/1 var(--font-body); }
+.oz-kutu span { font-size: 13px; color: var(--ink-soft); line-height: 1.25; }
+.oz-alt { font: 600 18px/1.2 var(--font-pixel); margin: 6px 0 0; }
+.oz-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.oz-liste li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 2px dashed #e8d9ce; padding-bottom: 4px; font-size: 15px; }
+.oz-liste em { font-style: normal; color: #1f8a52; }
+.oz-yorum { margin: 0; background: var(--lilac); border: 2px solid var(--ink); padding: 10px 12px; }
+.oz-not { margin: 0; font-size: 14px; }
+@media (max-width: 520px) { .oz-izgara { grid-template-columns: 1fr 1fr; } }
+.ar-ipucu { margin: 0; font-size: 14px; }
+
 /* ---------- hikâye (Ay nasıl geçti?) ---------- */
 body.hk-acik { overflow: hidden; }
 .hikaye { position: fixed; inset: 0; z-index: 1000; background: #1b1330; display: grid; place-items: center; }
@@ -343,6 +365,8 @@ body.hk-acik { overflow: hidden; }
 .m-neden { margin: 0 12px 10px; padding: 8px 10px; font-size: 14px; line-height: 1.4; background: var(--paper-2); border-left: 4px solid var(--pink); }
 .m-neden b { font: 600 13px/1 var(--font-pixel); margin-right: 4px; }
 .m-alt-p { font: 800 12px/1 var(--font-body); color: #1f6b47; margin-left: 4px; }
+.m-gr { font-size: .86em; color: var(--ink-soft); white-space: normal; }
+.m-k-not { margin: -4px 0 6px; font-size: 13px; line-height: 1.35; color: var(--ink-soft); }
 .m-ek { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 10px; background: #fff8d6; border: 2px dashed var(--ink); }
 .m-ek-bas { font: 600 13px/1.2 var(--font-pixel); color: var(--ink-soft); }
 .m-gece-p { font: 700 12px/1 var(--font-body); color: #1f6b47; }

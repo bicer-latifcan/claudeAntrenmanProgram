@@ -62,7 +62,7 @@ export function initMutfak({ state, save, izle }) {
     const deg = kayit(d)?.deg || {};
     return OGUNLER[ogun].secenekler[id].kalem.map(([grup, v], s) => {
       const alt = deg[`${ogun}.${id}.${s}`] ?? v, g = GRUPLAR[grup][alt] || GRUPLAR[grup][v];
-      return { grup, alt, ad: g.ad, al: g.al, p: g.p || 0, k: g.k || 0 };
+      return { grup, alt, ad: g.ad, gr: g.gr, al: g.al, p: g.p || 0, k: g.k || 0 };
     });
   }
   const geceKalem = (d) => GRUPLAR.gece[kayit(d)?.deg?.gece ?? 3];
@@ -124,10 +124,10 @@ export function initMutfak({ state, save, izle }) {
     const O = OGUNLER[ogun], ids = gosterilen(ogun, d), sec = kayit(d)?.sec?.[ogun];
     const kuvvet = ogun === 'ara' && programGunu(d)?.tur === 'kuvvet';
     const gk = geceKalem(d);
-    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan <span class="m-gece-p">(≈ ${yuvarla(gk.p)} g protein)</span>:</span>${kalemSatir({ ad: gk.ad, alt: kayit(d)?.deg?.gece ?? 3 }, 'gece', 'gece:gece:0')}</div>` : '';
+    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan <span class="m-gece-p">(≈ ${yuvarla(gk.p)} g protein)</span>:</span>${kalemSatir({ ad: gk.ad, gr: gk.gr, alt: kayit(d)?.deg?.gece ?? 3 }, 'gece', 'gece:gece:0')}</div>` : '';
     const a = alisma(d), ekOn = a?.ekler.includes(ogun) ? !!kayit(d)?.ek?.[ogun] : null;
     const ek = ekOn == null ? '' : `<div class="m-ek"><span class="m-ek-bas">${a.ad}, istersen ekle:</span>
-      <button type="button" class="m-tog${ekOn ? ' on' : ''}" data-ek="${ogun}" aria-pressed="${ekOn}">+ ${EKLER[ogun].ad}</button></div>`;
+      <button type="button" class="m-tog${ekOn ? ' on' : ''}" data-ek="${ogun}" aria-pressed="${ekOn}">+ ${EKLER[ogun].ad} <span class="m-gr">(${EKLER[ogun].gr})</span></button></div>`;
     return `<article class="card m-ogun" data-platform="card" data-ogun="${ogun}">
       <header class="m-ogun-bas">${ikonHtml(O.ikon, 3, 'm-ogun-ikon')}<h2>${O.ad}</h2><span class="m-saat">${O.saat}</span></header>
       ${kuvvet ? '<p class="m-ipucu">Antrenman günü: proteinli seçenekler önde.</p>' : ''}
@@ -140,8 +140,8 @@ export function initMutfak({ state, save, izle }) {
   function kalemSatir(k, grup, anahtar) {
     const acik = acikDegis === anahtar;
     const [, , s] = anahtar.split(':');
-    const altlar = acik ? `<div class="m-altlar">${GRUPLAR[grup].map((g, i) => (i === k.alt ? '' : `<button type="button" class="m-alt" data-alt="${anahtar}:${i}">${g.ad}${g.p != null ? ` <span class="m-alt-p">${yuvarla(g.p)} g</span>` : ''}</button>`)).join('')}</div>` : '';
-    return `<span class="m-kalem"><span class="m-kalem-ad">${k.ad}</span><button type="button" class="m-degis${acik ? ' on' : ''}" data-degis="${anahtar}" aria-expanded="${acik}" aria-label="${k.ad}: değiştir">${acik ? 'kapat' : 'değiştir'}</button></span>${altlar}`;
+    const altlar = acik ? `<div class="m-altlar">${GRUPLAR[grup].map((g, i) => (i === k.alt ? '' : `<button type="button" class="m-alt" data-alt="${anahtar}:${i}">${g.ad}${g.gr ? ` <span class="m-gr">(${g.gr})</span>` : ''}${g.p != null ? ` <span class="m-alt-p">${yuvarla(g.p)} g protein</span>` : ''}</button>`)).join('')}</div>` : '';
+    return `<span class="m-kalem"><span class="m-kalem-ad">${k.ad}${k.gr ? ` <span class="m-gr">(${k.gr})</span>` : ''}</span><button type="button" class="m-degis${acik ? ' on' : ''}" data-degis="${anahtar}" aria-expanded="${acik}" aria-label="${k.ad}: değiştir">${acik ? 'kapat' : 'değiştir'}</button></span>${altlar}`;
   }
   function secenekKart(ogun, id, i, on, d, kucuk = false) { // kucuk: başka bir seçenek seçildiyse sadece başlık
     const S = OGUNLER[ogun].secenekler[id];
@@ -166,7 +166,9 @@ export function initMutfak({ state, save, izle }) {
     return `<section class="card m-kontrol" data-platform="card">
       <h2 class="h-small">Bugünün küçük listesi</h2>
       <div class="m-k-satir"><span class="m-k-ad">Su</span><span class="m-ikonlar">${bardak}</span><span class="m-k-say">${su}/${SU_HEDEF} bardak</span></div>
+      <p class="m-k-not">1 su bardağı ≈ 200 ml. Hedef 8 bardak ≈ 1,6 litre; şu an ≈ ${ondalik(su * 0.2)} L. Çay ve kahve buna dahil değil.</p>
       <div class="m-k-satir"><span class="m-k-ad">Sebze</span><span class="m-ikonlar">${yaprak}</span><span class="m-k-say">${sebze}/${SEBZE_HEDEF} kez</span></div>
+      <p class="m-k-not">1 kez = 1 porsiyon sebze (≈ 150 g). Örnek: kahvaltıdaki domates-salatalık tabağı, akşamki 1 kase salata, 6 yemek kaşığı sebze yemeği (taze fasulye, ıspanak, brokoli…) ya da sebzeli çorba. Üçü bir günde = tamam.</p>
       <div class="m-k-satir"><span class="m-k-ad">Protein</span><span class="m-togs">${pro}</span></div>
       <div class="m-k-satir m-k-iki">
         <button type="button" class="m-tog${k.seker ? ' on' : ''}" data-tog="seker" aria-pressed="${!!k.seker}">Şekerli içecek içmedim</button>
@@ -180,14 +182,22 @@ export function initMutfak({ state, save, izle }) {
     for (let i = 0; i < 7; i++) {
       const d = gunEkle(d0, i);
       for (const ogun of SIRA) for (const k of [...kalemler(ogun, secilen(ogun, d), d), ...(ekVar(ogun, d) ? [EKLER[ogun]] : [])]) for (const [urun, mik, birim, reyon] of k.al) {
-        const u = urunler.get(urun) || { reyon, mik: 0, birim, ogun: 0 };
+        const ad = urunler.has(urun) && urunler.get(urun).birim && birim && urunler.get(urun).birim !== birim ? `${urun} (${birim})` : urun;
+        const u = urunler.get(ad) || { reyon, mik: 0, birim, ogun: 0 };
         u.ogun++; if (mik != null) { u.mik += mik; u.birim = birim; }
-        urunler.set(urun, u);
+        urunler.set(ad, u);
       }
     }
     return urunler;
   }
-  const miktarYazi = (u) => u.birim === 'adet' ? `${Math.ceil(u.mik)} adet` : u.birim === 'dilim' ? `${u.mik} dilim` : u.birim === 'kk' ? `${u.mik} kibrit kutusu (~${u.mik * 30} g)` : `${u.ogun} öğünde`;
+  const ondalik = (v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+  function miktarYazi(u) { // toplam: gram, mililitre, adet ya da demet
+    if (!u.mik) return `${u.ogun} öğünde`;
+    if (u.birim === 'g') return u.mik >= 1000 ? `${ondalik(Math.round(u.mik / 50) * 50 / 1000)} kg` : `${Math.round(u.mik / 10) * 10} g`;
+    if (u.birim === 'ml') return u.mik >= 1000 ? `${ondalik(Math.round(u.mik / 100) * 100 / 1000)} L` : `${Math.round(u.mik / 10) * 10} ml`;
+    if (u.birim === 'demet') return `${Math.max(1, Math.ceil(u.mik))} demet`;
+    return `${Math.ceil(u.mik)} adet`;
+  }
   function listeKart() {
     const d0 = bugun(), anahtar = isoTarih(d0), tikli = M.liste[anahtar] || {}, urunler = alisveris(d0);
     const gruplar = Object.entries(REYON).map(([r, ad]) => {
@@ -197,7 +207,7 @@ export function initMutfak({ state, save, izle }) {
     }).join('');
     return `<section class="card m-liste" data-platform="card">
       <div class="m-liste-bas">
-        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Bugünden itibaren 7 gün, seçtiğin öğünlere göre. Seçmediğin günlerde ilk seçenek sayıldı.</p></div>
+        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Bugünden itibaren 7 gün, seçtiğin öğünlere göre (seçmediğin günlerde ilk seçenek sayıldı). Et, tavuk ve balık çiğ ağırlıkla; bulgur, mercimek, nohut ve makarna kuru ağırlıkla yazılı.</p></div>
         <div class="row-end"><button type="button" class="pbtn small" data-kopyala>Listeyi kopyala</button><button type="button" class="pbtn small ghost" data-temizle>Tikleri temizle</button></div>
       </div>
       <div class="m-reyonlar">${gruplar}</div>

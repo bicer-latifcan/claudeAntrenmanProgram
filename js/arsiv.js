@@ -36,7 +36,8 @@ export function initArsiv({ state, ozet, izle }) {
         <p class="eyebrow">${simdi.tur}. tur · devam ediyor</p><h3>${simdi.tarihler}</h3>
         ${aylar(simdi.haftalar)}
         <p class="ar-sayi"><b>${simdi.tamam}/${simdi.toplamGoster}</b> gün tamam${simdi.rekor ? ` · en uzun zincir <b>${simdi.rekor}</b> gün` : ''}</p>
-        ${dugmeler('ara').replace('▶ İzle', '▶ Şimdiye kadarki hikâye')}
+        <p class="muted ar-ipucu">"Ay nasıl geçti?" hikâyesi 8 hafta bitince açılır; o zamana kadar özete bakabilirsin.</p>
+        <div class="row-end ar-dugme"><button type="button" class="pbtn primary small" data-hk="ara" data-islem="izle">Şimdiye kadarki özet</button></div>
       </section>` : `<section class="card ar-kart">
         <p class="eyebrow">${simdi.tur}. tur · yakında</p><h3>${tarihYaz(state.start)}'${ekAl(state.start)} başlıyor</h3>
         <p class="muted">Takvim o gün sıfırdan başlar. Hazırlan, Yumak ısınıyor!</p>
