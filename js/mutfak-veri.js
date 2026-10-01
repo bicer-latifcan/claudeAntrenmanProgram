@@ -336,3 +336,22 @@ export const BESIN_KAYNAK = [
   { b: 'C vitamini', t: 'Meyve, biber, domates, limonlu salata: her gün.' },
   { b: 'İyot', t: 'İyotlu tuz, süt ürünleri, yumurta, balık.' },
 ];
+
+// Mutfak sayfasının en altı: "PMOS ve bu menü" (menünün neye göre kurulduğu, kısaca)
+export const PMOS = {
+  giris: 'Özel bir "PMOS diyeti" yok: 2023 Uluslararası PMOS Kılavuzu hiçbir diyet türünün diğerinden üstün olmadığını söylüyor. Önemli olan, insülin direncine iyi gelen ve sürdürülebilen bir düzen. Bu menü buna göre kuruldu.',
+  bolumler: [
+    { baslik: 'Neye göre ayarlandı?', liste: [
+      ['Lifli, yavaş yükselten karbonhidrat.', 'Bulgur, baklagil, tam buğday ve çavdar ekmeği. Kan şekeri ve insülin dalgalanması azalır.'],
+      ['Her öğünde protein, günde yaklaşık 100 gram.', 'Tok tutar, kası korur, kan şekerini dengeler.'],
+      ['Haftada 2 balık.', 'Omega-3, PMOS’ta sık görülen yüksek trigliseride iyi gelir.'],
+      ['Haftada 2–3 baklagil.', 'Lif, magnezyum ve folat; insülin direncine en iyi gelen besin grubu.'],
+      ['Şekerli içecek yok.', 'Kanıtı en güçlü değişiklik.'],
+      ['Yemekten sonra 10 dakika yürüyüş.', 'Yemek sonrası kan şekerini belirgin düşürür.'],
+      ['Hafif kalori açığı.', 'Harcamanın yaklaşık 500 kcal altı (≈ 1500 kcal), boy, yaş ve kiloya göre hesaplandı. %5–10 kilo kaybı adet düzenini ve hormonları iyileştiriyor; çok düşük kalori ise acıktırır ve kas kaybettirir. İlk 4 hafta alışma dönemi: hedef yavaş yavaş iner.'],
+    ] },
+    { baslik: 'Seçim sende, denge sitede', metin: 'Öğünleri sen seçiyorsun. "Haftalık denge" kartı balığı, baklagili ve kırmızı eti sayar; hafta biterken eksik kalan grup akşam menüsüne kendiliğinden gelir. Her gün tavuk seçsen bile hafta dengede kalır.' },
+    { baslik: 'Doğru gidiyor mu?', metin: 'Haftada bir tartıl (sitede yazmaz). 3–4 hafta boyunca haftada 0,3–0,7 kg gidiyorsa ayar doğru. Hiç gitmiyorsa porsiyonlar biraz azaltılır, çok acıkıyor ya da yoruluyorsan biraz artırılır. Kartlardaki protein ve kalori ev ölçüsünden tahmindir (±%15).' },
+    { baslik: 'Dikkat edilecek iki nokta', metin: 'Demir (günde ≈ 16–18 mg önerilir, menüyle ≈ 9–13 mg) ve D vitamini yemekle zor tamamlanır. Kan tahlilinde ferritin ve D vitamini, metformin kullanılıyorsa B12 de baktırılır. Bu menü kılavuzlara dayalı genel bir plan, kişiye özel tıbbi beslenme tedavisi değil; istersen bir diyetisyene gösterebilirsin, porsiyonlar gramıyla yazılı.' },
+  ],
+};

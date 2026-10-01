@@ -1,5 +1,5 @@
 // Yumak'ın Mutfağı: günün öğün seçenekleri, "değiştir", küçük kontrol listesi, alışveriş listesi, notlar.
-import { GRUPLAR, OGUNLER, DONGU, REYON, ILKELER, MITLER, TAKVIYELER, HEDEF, ALISMA, EKLER, ETIKET, DENGE, BESIN_KAYNAK } from './mutfak-veri.js';
+import { GRUPLAR, OGUNLER, DONGU, REYON, ILKELER, MITLER, TAKVIYELER, HEDEF, ALISMA, EKLER, ETIKET, DENGE, BESIN_KAYNAK, PMOS } from './mutfak-veri.js';
 import { AYARLAR, TAKVIM } from './program.js';
 import { hearts, sparkles, icon } from './fx.js';
 
@@ -71,7 +71,6 @@ export function initMutfak({ state, save, izle }) {
     const havuz = [...liste, ...Object.keys(S).filter((id) => !liste.includes(id))];
     return liste.map((_, i) => havuz[(ofs * liste.length + i) % havuz.length]);
   }
-  const secilen = (ogun, d) => kayit(d)?.sec?.[ogun] || gosterilen(ogun, d)[0];
   function kalemler(ogun, id, d) {
     const deg = kayit(d)?.deg || {};
     return OGUNLER[ogun].secenekler[id].kalem.map(([grup, v], s) => {
@@ -239,11 +238,15 @@ export function initMutfak({ state, save, izle }) {
     const urunler = new Map();
     for (let i = 0; i < 7; i++) {
       const d = gunEkle(d0, i);
-      for (const ogun of SIRA) for (const k of [...kalemler(ogun, secilen(ogun, d), d), ...(ekVar(ogun, d) ? [EKLER[ogun]] : [])]) for (const [urun, mik, birim, reyon] of k.al) {
+      for (const ogun of SIRA) { // sadece seçilen öğünler (seçilmeyen gün listeye girmez)
+        const id = kayit(d)?.sec?.[ogun];
+        if (!id || !OGUNLER[ogun].secenekler[id]) continue;
+        for (const k of [...kalemler(ogun, id, d), ...(ekVar(ogun, d) ? [EKLER[ogun]] : [])]) for (const [urun, mik, birim, reyon] of k.al) {
         const ad = urunler.has(urun) && urunler.get(urun).birim && birim && urunler.get(urun).birim !== birim ? `${urun} (${birim})` : urun;
         const u = urunler.get(ad) || { reyon, mik: 0, birim, ogun: 0 };
         u.ogun++; if (mik != null) { u.mik += mik; u.birim = birim; }
         urunler.set(ad, u);
+        }
       }
     }
     return urunler;
@@ -265,11 +268,19 @@ export function initMutfak({ state, save, izle }) {
     }).join('');
     return `<section class="card m-liste" data-platform="card">
       <div class="m-liste-bas">
-        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Bugünden itibaren 7 gün, seçtiğin öğünlere göre (seçmediğin günlerde ilk seçenek sayıldı). Et, tavuk ve balık çiğ ağırlıkla; bulgur, mercimek, nohut ve makarna kuru ağırlıkla yazılı.</p></div>
+        <div><h2 class="h-small">Alışveriş listesi</h2><p class="muted">Bugünden itibaren 7 gün, sadece seçtiğin öğünlere göre. Et, tavuk ve balık çiğ ağırlıkla; bulgur, mercimek, nohut ve makarna kuru ağırlıkla yazılı.</p></div>
         <div class="row-end"><button type="button" class="pbtn small" data-kopyala>Listeyi kopyala</button><button type="button" class="pbtn small ghost" data-temizle>Tikleri temizle</button><button type="button" class="pbtn small ghost" data-secimsil>Seçimleri temizle</button></div>
       </div>
-      <div class="m-reyonlar">${gruplar}</div>
+      ${urunler.size ? `<div class="m-reyonlar">${gruplar}</div>` : '<p class="m-liste-bos">Henüz öğün seçmedin. Önümüzdeki günlerde "Bunu seç"e bastıkça liste kendiliğinden dolar; günleri üstteki oklarla değiştirebilirsin.</p>'}
       <p class="muted m-hep">Evde hep olsun: zeytinyağı, limon, tarçın, karabiber, kimyon, pul biber, yeşil çay, nane çayı.</p>
+    </section>`;
+  }
+  function pmosKart() {
+    return `<section class="card m-pmos" data-platform="card">
+      <p class="eyebrow">Neden bu menü?</p>
+      <h2 class="h-small">PMOS ve bu menü</h2>
+      <p class="lede-kucuk">${PMOS.giris}</p>
+      ${PMOS.bolumler.map((b) => `<h3 class="m-alt-baslik">${b.baslik}</h3>${b.metin ? `<p>${b.metin}</p>` : ''}${b.liste ? `<ul class="m-pmos-liste">${b.liste.map(([k, t]) => `<li><b>${k}</b> ${t}</li>`).join('')}</ul>` : ''}`).join('')}
     </section>`;
   }
   function notlarKart() {
@@ -297,7 +308,8 @@ export function initMutfak({ state, save, izle }) {
       + `<div class="m-ogunler">${SIRA.map((o) => ogunKart(o, d)).join('')}</div>`
       + dengeKart(d)
       + `<div class="m-alt-izgara">${kontrolKart(d)}${listeKart()}</div>`
-      + notlarKart();
+      + notlarKart()
+      + pmosKart();
     for (const c of kok.querySelectorAll('canvas[data-ikon]')) { // outerHTML ile kopyalanan tuvaller boş gelir: yeniden çiz
       const yeni = icon(c.dataset.ikon, +c.dataset.olcek); yeni.className = c.className; yeni.setAttribute('aria-hidden', 'true'); c.replaceWith(yeni);
     }
