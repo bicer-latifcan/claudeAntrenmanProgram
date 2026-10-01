@@ -55,7 +55,6 @@ export function kapiyiAc({ mod = 'giris', eskiKod = null, veri = null, sonra }) 
       ${eskiKod ? '' : `<details class="kapi-eski"><summary>Şifremi unuttum / eski bağlantı linkim var</summary>
         <p class="muted">Eski kişisel linkini (…#kod-…) yapıştırırsan yeni şifre o kayda bağlanır; ilerleme kaybolmaz.</p>
         <input type="text" id="kapiEski" placeholder="Eski linki yapıştır" autocapitalize="off" spellcheck="false"></details>`}` : ''}
-      ${olustur && bulut.adminAnahtari() ? '<p class="muted kapi-not">İlerlemen, site sahibinin panelinde de görünür (sadece görüntüleme).</p>' : ''}
       <p class="kapi-mesaj ${tur}" role="status">${mesaj}</p>
       <div class="row-end">
         <button type="button" class="pbtn ghost small" id="kapiDegis">${olustur ? 'Zaten şifrem var, giriş yap' : 'İlk kez mi? Şifre oluştur'}</button>

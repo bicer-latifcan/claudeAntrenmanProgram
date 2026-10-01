@@ -113,8 +113,8 @@ export function cikisYap(anahtarlar = []) {
    Şifreyle giren her cihaz, kendi kodunu ortak bir deftere ŞİFRELİ olarak ekler. Defteri sadece admin
    şifresiyle açılan özel anahtar çözebilir; defteri okuyan biri kodları göremez. Admin paneli kayıtları
    sadece okur. Biri defteri bozsa bile her cihaz günde bir kez kendi kaydını kontrol edip geri ekler. */
-// Admin panelinin kurulumda verdiği açık anahtar (gizli değildir). Boşken kimse kaydedilmez.
-export const ADMIN_ANAHTAR = null;
+// Admin panelinin kurulumda verdiği açık anahtar (gizli değildir; paneli açmaz). Boşken kimse kaydedilmez.
+export const ADMIN_ANAHTAR = { x: 'EqRfwkGfdvBtU54rDExX14Ne6reDqIgYvkXlgf98R0c', y: 'TjfO8P1IQudF1S5YKKeaxFjXg6OxhwGafvKaJy9qAM4' };
 const YEREL = typeof location !== 'undefined' && /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
 export const DEFTER = YEREL ? 'TestDefteriYumakAyHiXa2345PQ' : 'KayitDefteriYumakAyHiXa2345P';
 export function adminAnahtari() { // yerelde denemek için test anahtarı kullanılabilir

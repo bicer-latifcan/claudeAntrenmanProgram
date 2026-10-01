@@ -245,7 +245,6 @@ body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], bo
 .kapi-eski summary { font: 600 14px/1.3 var(--font-pixel); cursor: pointer; }
 .kapi-eski input { margin-top: 6px; }
 .kapi-mesaj:empty { display: none; }
-.kapi-not { margin: 0; font-size: 13px; }
 @media (max-width: 520px) {
   .kapi-ic > .row-end:last-child { flex-direction: column-reverse; align-items: stretch; }
   .kapi-ic > .row-end:last-child .pbtn { width: 100%; justify-content: center; }
