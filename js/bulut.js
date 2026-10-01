@@ -21,13 +21,13 @@ const adres = (kod) => `https://firestore.googleapis.com/v1/projects/${BULUT.pro
 const IZLE_KEY = 'yumak-izle-kod';
 export function linkModu() {
   try {
-    const m = location.hash.match(/^#(kod|izle)-([A-Za-z0-9]{24,})$/);
+    const m = location.hash.match(/^#(kod|izle)-([A-Za-z0-9]{24,})(?:~(\w+))?$/);
     if (m) {
-      history.replaceState(null, '', location.pathname + location.search);
-      if (m[1] === 'izle') { localStorage.setItem(IZLE_KEY, m[2]); return { kod: m[2], izle: true, yeni: false }; }
+      history.replaceState(null, '', location.pathname + location.search + (m[3] === 'mutfak' ? '#mutfak' : ''));
+      if (m[1] === 'izle') { localStorage.setItem(IZLE_KEY, m[2]); return { kod: m[2], izle: true, yeni: false, sekme: m[3] }; }
       const eski = localStorage.getItem(KOD_KEY);
       localStorage.setItem(KOD_KEY, m[2]); localStorage.removeItem(IZLE_KEY);
-      return { kod: m[2], izle: false, yeni: eski !== m[2] };   // bu cihazda ilk kez: buluttaki kayıt kazanır
+      return { kod: m[2], izle: false, yeni: eski !== m[2], sekme: m[3] };   // bu cihazda ilk kez: buluttaki kayıt kazanır
     }
     const iz = localStorage.getItem(IZLE_KEY);
     if (iz) return { kod: iz, izle: true, yeni: false };

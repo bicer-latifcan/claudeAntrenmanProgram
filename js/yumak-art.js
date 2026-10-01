@@ -147,6 +147,11 @@ export function headFront(g, hx, hy, s, st) {
     for (const sd of [-1, 1]) limb(g, ...P(sd * 13, 0), ...P(sd * 17.5, -2.5), 0.8 * s, 0.8 * s, M.PAINT, { kind: K.SHADES });
     for (const sx of [-10, 5.2]) { px(g, ...P(sx, -1.4), M.SHINE); px(g, ...P(sx + 1, -2.3), M.SHINE); px(g, ...P(sx + 1.2, 1.2), M.SHINE); }
   }
+  if (st.chef) { // şef şapkası (Mutfak sekmesinde)
+    limb(g, ...P(-9, -13), ...P(9, -13), 2.6 * s, 2.6 * s, M.SOLID, {}, 0, '#efe6ee');
+    for (const [x, y, r] of [[-6, -19, 5.4], [6, -19, 5.4], [0, -21.5, 6.2]]) ellipse(g, ...P(x, y), r * s, r * 0.85 * s, M.SOLID, {}, 0, '#fffaf3');
+    line(g, ...P(-8, -13.5), ...P(8, -13.5), '#ff9fbd');
+  }
   if (st.hat) { // parti şapkası (seri kutlaması)
     tri(g, ...P(-6, -13), ...P(6, -13), ...P(1.5, -25.5), M.PAINT, { kind: K.PINK }, 0.1);
     line(g, ...P(-3.6, -16.4), ...P(4.2, -17.8), '#fff4f8'); line(g, ...P(-1.2, -20.8), ...P(3.2, -21.8), '#fff4f8');
@@ -180,6 +185,10 @@ export function headSide(g, hx, hy, s, st) {
     limb(g, ...P(-15, -6.5), ...P(13, -9), 1.9 * s, 1.9 * s, M.PAINT, { kind: K.BAND }, 0.1);
     limb(g, ...P(-15, -6), ...P(-20, -2.5), 1.1 * s, 0.9 * s, M.PAINT, { kind: K.BAND });
     limb(g, ...P(-15, -6), ...P(-19.5, -8.5), 1.1 * s, 0.9 * s, M.PAINT, { kind: K.BAND });
+  }
+  if (st.chef) {
+    limb(g, ...P(-6, -14), ...P(9, -15), 2.4 * s, 2.4 * s, M.SOLID, {}, 0, '#efe6ee');
+    for (const [x, y, r] of [[-3, -20, 5], [7, -20.5, 5], [2, -23, 5.6]]) ellipse(g, ...P(x, y), r * s, r * 0.85 * s, M.SOLID, {}, 0, '#fffaf3');
   }
   whiskers(g, hx, hy, s, 1);
 }

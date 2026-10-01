@@ -368,6 +368,53 @@ export const YUMAK_SOZLER = {
   kum: ['Bakma! Özel anım.', '...', 'Oh be.'],
   uyku: ['zzz... dinlenme de antrenmanın parçası...', 'zzz... bir set daha... zzz...', 'Beş dakika daha... zzz...'],
   tamam: ['Harika! Bugünü bitirdin, pati damgasını vurdum!', 'İşte bu! Ben gurur duyuyorum, sen de duy.', 'Bir gün daha tamam! Ay biraz daha doldu.', 'Tebrikler! Bugün kendine bir mırıltı hak ettin.'],
+  // Yumak'ın Mutfağı
+  mutfakSelam: [
+    'Şef Yumak göreve hazır! Bugün ne pişiriyoruz?',
+    'Mutfağa hoş geldin. Şapkamı taktım, ciddiyim.',
+    'Önce bir bardak su, sonra menü. Şef kuralı.',
+  ],
+  mutfak: [
+    'Tabağın yarısı sebze olsun. Diğer yarısı için pazarlık yapabiliriz.',
+    'Beyaz ekmek yerine köy ya da tam buğday ekmeği. Ben ekmek yemem ama bilirim.',
+    'Her öğünde bir avuç protein: yumurta, peynir, yoğurt, tavuk, köfte, balık…',
+    'Bulgur pilavı, pirinç pilavının fit kuzenidir.',
+    'Mercimek çorbası: ucuz, kolay, tok tutar. Şef onaylı.',
+    'Çaya şeker yerine tarçın dene. Ben tarçını koklamayı seviyorum.',
+    'Meyve suyu değil, meyvenin kendisi! Kabuğuyla, lifiyle.',
+    'Yemekten sonra 10 dakika yürüyüş, şekere iyi gelir. Ben de pencereye kadar yürüyorum.',
+    'Kaçamak mı yaptın? Sorun yok, bir sonraki öğünle devam. Kediler geçmişe takılmaz.',
+    'Gluteni, sütü kesmene gerek yok. İnternetteki her şeye inanma, bana inan.',
+    'Bir avuç ceviz: beyin, kalp ve mutluluk için. Bana da bir tane?',
+    'Haftada iki balık! Ben her gün olsa itiraz etmem.',
+    'Değiştir düğmesi senin dostun. Yumurta yoksa yoğurt var.',
+  ],
+  // widget bildirimleri (Scriptable): {n} = zincir
+  bildirimSu: [
+    'Su içtin mi? Ben içtim, sıra sende 💧',
+    'Bir bardak su molası! Patimle kaldırıyorum, şerefe.',
+    'Su kabım dolu, seninki? 💧',
+    'Hatırlatma: bir bardak su. Bu mesaj su kadar berrak.',
+    'Su iç ki tüylerin parlasın. Benimkiler parlıyor bak.',
+  ],
+  bildirimKuvvet: [
+    'Bugün kuvvet günü! Dambıl seni özlemiş 💪',
+    'Kuvvet günü! Tarçın ısınıyor, ben moral veriyorum.',
+    'Bugün kaslar konuşacak. Ben de alkışlayacağım.',
+  ],
+  bildirimYuruyus: [
+    'Bugün yürüyüş günü! Rahat ayakkabıları giy, ben pencereden izliyorum.',
+    'Yürüyüş günü: konuşabileceğin ama şarkı söyleyemeyeceğin tempo!',
+  ],
+  bildirimYemek: [
+    'Akşam yemeğinden sonra 10 dakika yürüyelim mi? Şeker de sevinir.',
+    'Yemek bitti mi? Kısa bir tur yürüyüş, sonra kanepe ikimizin.',
+  ],
+  bildirimZincir: [
+    'Zincir tehlikede 🥺 {n} günlük zinciri kurtarmak için kısa bir yürüyüş bile yeter.',
+    'Bugünü işaretlemedin… Yumak pencerede bekliyor 🥺',
+    'Gece yarısına az kaldı! Zincir {n} gün, bir halka daha?',
+  ],
   // seri (widget): {n} = şu anki seri, {m} = bugün yapınca olacak seri. Dinlenme günleri seriyi uzatır.
   seriIlk: [
     'İlk halka seni bekliyor! Bugün yap, zincirimiz başlasın.',

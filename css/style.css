@@ -231,6 +231,97 @@ body.izle .setbox, body.izle .kg, body.izle .done-btn, body.izle [data-walk], bo
 .field textarea { font: 500 13px/1.4 ui-monospace, monospace; padding: 8px; border: 3px solid var(--ink); background: #fff; color: var(--ink); resize: vertical; }
 
 /* ---------- dar ekran ---------- */
+/* ---------- sekmeler ---------- */
+.tabs { display: flex; gap: 10px; padding-bottom: 4px; }
+.tab { font: 600 17px/1 var(--font-pixel); color: var(--ink); background: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 9px 14px 9px 10px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.tab canvas { width: 26px; height: 26px; }
+.tab.on { background: var(--pink); color: #fff; text-shadow: 1px 1px 0 var(--ink); }
+.tab:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+/* ---------- Yumak'ın Mutfağı ---------- */
+.mutfak { display: grid; gap: 22px; margin-top: 18px; }
+.m-bas-ust { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.m-bas h1 { margin: 0 0 10px; }
+.m-tarih { display: flex; gap: 6px; align-items: center; }
+.m-tarih-ad { min-width: 190px; }
+.m-gun { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.m-gun-ipucu { color: var(--ink-soft); font-size: 16px; }
+.m-ogunler { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.m-ogun { padding: 18px; display: grid; gap: 12px; }
+.m-ogun-bas { display: flex; align-items: center; gap: 10px; }
+.m-ogun-bas h2 { font-size: 24px; margin: 0; }
+.m-ogun-bas canvas { width: 30px; height: auto; }
+.m-saat { margin-left: auto; font: 500 13px/1 var(--font-pixel); color: var(--ink-soft); }
+.m-ipucu { margin: 0; font-size: 14px; background: var(--peach); border: 2px dashed var(--ink); padding: 6px 8px; }
+.m-secenekler { display: grid; gap: 12px; }
+.m-sec { border: 3px solid var(--ink); background: #fff; }
+.m-sec.on { background: #fff4f8; box-shadow: 4px 4px 0 var(--pink); }
+.m-sec.kucuk { opacity: .78; }
+.m-sec.kucuk .m-sec-bas { border-bottom: 0; }
+.m-sec-bas { width: 100%; display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "h a d" "h t t"; gap: 2px 10px; align-items: center; text-align: left; background: none; border: 0; border-bottom: 2px dashed #e8d9ce; padding: 10px 12px; cursor: pointer; color: var(--ink); }
+.m-harf { grid-area: h; font: 700 22px/1 var(--font-pixel); width: 38px; height: 38px; display: grid; place-items: center; border: 3px solid var(--ink); background: var(--lilac); }
+.m-sec.on .m-harf { background: var(--pink); color: #fff; text-shadow: 1px 1px 0 var(--ink); }
+.m-sec-ad { grid-area: a; font: 600 18px/1.15 var(--font-pixel); }
+.m-dk { grid-area: d; font: 500 13px/1 var(--font-pixel); color: var(--ink-soft); }
+.m-tik { grid-area: t; font: 500 13px/1.2 var(--font-pixel); color: #c2335f; }
+.m-kalemler { list-style: none; margin: 0; padding: 8px 12px 10px; display: grid; gap: 6px; }
+.m-kalem { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.m-kalem-ad { font-size: 16px; line-height: 1.35; }
+.m-degis { flex: none; font: 500 12px/1 var(--font-pixel); color: var(--ink); background: var(--mint); border: 2px solid var(--ink); padding: 4px 6px; cursor: pointer; }
+.m-degis.on { background: var(--butter); }
+.m-altlar { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; padding: 8px; background: var(--paper-2); border: 2px dashed var(--ink); }
+.m-alt { font: 500 14px/1.2 var(--font-body); text-align: left; color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 5px 8px; cursor: pointer; }
+.m-alt:hover { background: var(--mint); }
+.m-not { margin: 0; padding: 0 12px 10px; font-size: 14px; color: var(--ink-soft); }
+.m-gece { font-size: 15px; border-top: 2px dashed #e8d9ce; padding-top: 10px; }
+.m-gece-bas { font: 600 14px/1 var(--font-pixel); display: block; margin-bottom: 4px; color: var(--ink-soft); }
+.m-baska { justify-self: start; font: 500 14px/1 var(--font-pixel); color: var(--ink); background: none; border: 0; padding: 4px 0; text-decoration: underline; cursor: pointer; }
+.m-alt-izgara { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; align-items: start; }
+.m-kontrol, .m-liste { display: grid; gap: 12px; }
+.m-kontrol h2, .m-liste h2 { margin: 0; }
+.m-k-satir { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.m-k-ad { font: 600 16px/1 var(--font-pixel); width: 64px; }
+.m-k-say { font: 500 13px/1 var(--font-pixel); color: var(--ink-soft); }
+.m-ikonlar { display: flex; gap: 4px; flex-wrap: wrap; }
+.m-ikon-btn { background: none; border: 2px solid transparent; padding: 2px; cursor: pointer; line-height: 0; }
+.m-ikon-btn canvas { filter: grayscale(1); opacity: .35; }
+.m-ikon-btn.dolu canvas { filter: none; opacity: 1; }
+.m-ikon-btn:focus-visible { border-color: var(--pink); }
+.m-togs { display: flex; gap: 6px; flex-wrap: wrap; }
+.m-tog { font: 500 14px/1.1 var(--font-pixel); color: var(--ink); background: #fff; border: 2px solid var(--ink); padding: 7px 9px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.m-tog.on { background: var(--mint); box-shadow: 2px 2px 0 var(--ink); }
+.m-tog.on::after { content: "✓"; }
+.m-k-iki { gap: 8px; }
+.m-yorum { margin: 0; background: var(--lilac); border: 2px solid var(--ink); padding: 8px 10px; font-size: 15px; }
+.m-liste-bas { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.m-liste-bas p { margin: 4px 0 0; font-size: 14px; }
+.m-reyonlar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; }
+.m-reyon h3 { font: 600 15px/1.2 var(--font-pixel); margin: 6px 0 4px; color: #c2335f; }
+.m-reyon ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.m-liste-satir { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; padding: 2px 0; }
+.m-liste-satir input { width: 18px; height: 18px; accent-color: #2fb56d; flex: none; }
+.m-liste-satir.tikli span { text-decoration: line-through; opacity: .5; }
+.m-miktar { margin-left: auto; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.m-hep { font-size: 14px; margin: 0; }
+.m-notlar { display: grid; gap: 14px; }
+.m-notlar h2 { margin: 0; }
+.m-ilkeler { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.m-ilke { border: 2px solid var(--ink); background: #fff; padding: 10px 12px; }
+.m-ilke b { font: 600 16px/1.2 var(--font-pixel); display: block; margin-bottom: 4px; }
+.m-ilke p { margin: 0; font-size: 15px; line-height: 1.4; }
+.m-alt-baslik { font: 600 18px/1.2 var(--font-pixel); margin: 6px 0 0; }
+.m-mitler { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.m-mit { text-align: left; font: 500 15px/1.35 var(--font-body); color: var(--ink); background: var(--paper-2); border: 2px solid var(--ink); padding: 10px 12px; cursor: pointer; display: grid; gap: 6px; align-content: start; }
+.m-mit.acik { background: #fff; }
+.m-mit-s { font-weight: 700; }
+.m-mit-c { font: 700 13px/1 var(--font-pixel); justify-self: start; padding: 4px 7px; border: 2px solid var(--ink); }
+.m-mit-c.g { background: var(--mint); } .m-mit-c.m { background: var(--pink-soft); }
+.m-mit-ipucu { font: 500 12px/1 var(--font-pixel); color: var(--ink-soft); }
+.m-takviye li { margin: 6px 0; }
+body.izle .m-sec-bas, body.izle .m-alt, body.izle .m-baska, body.izle .m-ikon-btn, body.izle .m-tog, body.izle .m-liste-satir, body.izle [data-temizle] { pointer-events: none; }
+@media (max-width: 980px) { .m-ogunler { grid-template-columns: 1fr 1fr; } .m-ogun[data-ogun="aksam"] { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .m-ogunler, .m-alt-izgara { grid-template-columns: 1fr; } .m-ogun[data-ogun="aksam"] { grid-column: auto; } .m-reyonlar { grid-template-columns: 1fr; } .m-tarih-ad { min-width: 0; } }
+
 @media (max-width: 860px) {
   .hero { grid-template-columns: 1fr; }
   .why-grid { grid-template-columns: 1fr 1fr; }

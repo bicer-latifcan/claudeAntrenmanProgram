@@ -172,7 +172,8 @@ export function initPet(app) {
     const k = DAY_KEY[app.dayInfo(ti.w, ti.d).tur];
     return k && S[k] ? fresh(S[k]) : null;
   }
-  function chatter() { // tavsiye, şaka, düşünce, ilerleme, saat, bugünün günü
+  function chatter() { // tavsiye, şaka, düşünce, ilerleme, saat, bugünün günü (mutfakta yemek sözleri)
+    if (app.sefMi?.() && S.mutfak && Math.random() < 0.65) return fresh(S.mutfak);
     const r = Math.random();
     if (r < 0.28) return fresh(S.tavsiye);
     if (r < 0.56) return fresh(S.sakalar);
@@ -652,6 +653,8 @@ export function initPet(app) {
     if (d.type === 'day-done') { set('celebrate', 'sit', { eyes: 'happy', mouth: 'open' }); say(pick(S.tamam), 3600); }
     if (d.type === 'set-done' && Math.random() < 0.3 && !busy()) say(pick(['Bir set daha bitti!', 'Harika gidiyorsun.', 'Sayıyorum: tamam!']), 1600);
     if (d.type === 'sound') { soundOn = d.on; if (d.on) ac(); else purr(false); }
+    if (d.type === 'konus' && !busy()) say(d.metin, 3200);
+    if (d.type === 'sekme' && d.ad === 'mutfak' && !busy() && S.mutfakSelam) setTimeout(() => { if (!busy()) say(fresh(S.mutfakSelam), 3600); }, 500);
   });
 
   /* ---------- ana döngü ---------- */
@@ -814,7 +817,7 @@ export function initPet(app) {
   function draw() {
     const [hx, hy] = [cat.x, cat.y - 60 * scale()];
     const look = { x: Math.abs(pointer.x - hx) < 60 ? 0 : (pointer.x < hx ? -1 : 1), y: pointer.y > hy + 60 ? 1 : 0 };
-    const st = { t: cat.t, blink: cat.blink, look, earTwitch: cat.earT > 0, ...cat.ps };
+    const st = { t: cat.t, blink: cat.blink, look, earTwitch: cat.earT > 0, chef: !!app.sefMi?.() && !cat.ps.hat, ...cat.ps };
     const fn = Y.POSES[cat.pose] || Y.sit;
     if (cat.pose === 'sit' && cat.state === 'pet') st.eyes = 'happy';
     fn(grid, st);

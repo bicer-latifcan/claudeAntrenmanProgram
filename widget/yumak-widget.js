@@ -148,7 +148,7 @@ async function modelKur(baglanti) {
     return { ...b, d, tarih: dt, tamam: !!done[`h${w + 1}g${d + 1}`], bugun: d === bugunD, gecmis: d < bugunD, gelecek: d > bugunD };
   });
   const SR = seriHesapla(plan, done, fark);
-  const ortak = { simdi, izle: baglanti.izle, taze: durum.taze, bulutYok: durum.yok, tamamSay, gunSay, seri: SR.seri, rekor: SR.rekor, seriYandi: SR.bugunTamam && SR.seri > 0 };
+  const ortak = { simdi, izle: baglanti.izle, taze: durum.taze, bulutYok: durum.yok, tamamSay, gunSay, seri: SR.seri, rekor: SR.rekor, seriYandi: SR.bugunTamam && SR.seri > 0, veri, plan, basTarih };
   if (fark < 0) {
     const kalan = -fark;
     return { ...ortak, durum: 'once', resim: 'bekle', ust: 'PROGRAM BAŞLIYOR', baslik: `${basTarih.getDate()} ${AY[basTarih.getMonth()]} ${GUN[gunNo(basTarih)]}`,
@@ -182,6 +182,72 @@ async function modelKur(baglanti) {
     satir: tamam && !dinlenme ? 'Bugün tamam!' : `Bugün: ${b.kisa}`,
     hafta: haftaKur(w, d),
   };
+}
+
+/* ---------- bildirimler: Yumak'ın ağzından (Scriptable yerel bildirimleri) ---------- */
+const BKC = 'yumak-bildirim';
+const B_VARSAYILAN = { su: true, antrenman: true, yemek: true, zincir: true };
+const B_AD = {
+  su: 'Su hatırlatmaları (10:30, 13:30, 16:30, 19:00)',
+  antrenman: 'Antrenman günü sabahı (09:30)',
+  yemek: 'Yemekten sonra yürüyüş (20:15)',
+  zincir: 'Zincir tehlikede (21:00, gün işaretlenmediyse)',
+};
+const SU_SAAT = [[10, 30], [13, 30], [16, 30], [19, 0]];
+function bAyar() {
+  try { return { ...B_VARSAYILAN, ...(Keychain.contains(BKC) ? JSON.parse(Keychain.get(BKC)) : {}) }; } catch (e) { return { ...B_VARSAYILAN }; }
+}
+const isoGun = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+async function bildirimleriKur(m, baglanti) {
+  if (!baglanti || baglanti.izle || !m.plan || !m.basTarih) return; // izleme linkinde bildirim yok
+  const A = bAyar(), S = m.plan.YUMAK_SOZLER || {}, simdi = m.simdi, veri = m.veri || {};
+  const N = m.plan.AYARLAR.haftaSayisi * 7;
+  const anda = (gunOfs, h, dk) => { const d = new Date(simdi); d.setDate(d.getDate() + gunOfs); d.setHours(h, dk, 0, 0); return d; };
+  const indeks = (d) => { const g = new Date(d); g.setHours(0, 0, 0, 0); return Math.round((g - m.basTarih) / 864e5); };
+  const tur = (d) => { const f = indeks(d); return f < 0 || f >= N ? null : m.plan.TAKVIM[Math.floor(f / 7)][f % 7].tur; };
+  const yapildi = (d) => { const f = indeks(d); return !!(veri.done || {})[`h${Math.floor(f / 7) + 1}g${(f % 7) + 1}`]; };
+  const sec = (liste, yedek) => rastgele(liste && liste.length ? liste : [yedek]);
+  const link = (sekme) => `${SITE}#kod-${baglanti.kod}${sekme ? '~' + sekme : ''}`;
+  async function kur(id, acik, tarih, metin, sekme) {
+    try {
+      if (!acik || !tarih || !metin) { await Notification.removePending([id]); return; }
+      const n = new Notification();
+      n.identifier = id; n.threadIdentifier = 'yumak'; n.title = 'Yumak 🐾'; n.body = metin; n.openURL = link(sekme);
+      n.setTriggerDate(tarih);
+      await n.schedule(); // aynı kimlikle yeniden planlanınca eskisinin yerine geçer
+    } catch (e) { /* bildirim izni yoksa sessizce geç */ }
+  }
+  // su: bugünün kalan saatleri; o saate kadar yeterli bardak işaretlendiyse o saat atlanır
+  const bugunSu = ((veri.mutfak && veri.mutfak.kontrol && veri.mutfak.kontrol[isoGun(simdi)]) || {}).su || 0;
+  for (let i = 0; i < SU_SAAT.length; i++) {
+    const [h, dk] = SU_SAAT[i], t = anda(0, h, dk);
+    await kur(`yumak-su-${i}`, A.su, t > simdi && bugunSu < (i + 1) * 2 ? t : anda(1, h, dk), sec(S.bildirimSu, 'Su içtin mi? 💧'), 'mutfak');
+  }
+  // antrenman günü sabahı
+  const sabahOfs = anda(0, 9, 30) > simdi ? 0 : 1, sabahTur = tur(anda(sabahOfs, 12, 0));
+  const sabahMetin = sabahTur === 'kuvvet' ? sec(S.bildirimKuvvet, 'Bugün kuvvet günü! 💪') : ['yuruyus', 'uzun', 'aralikli'].includes(sabahTur) ? sec(S.bildirimYuruyus, 'Bugün yürüyüş günü!') : null;
+  await kur('yumak-antrenman', A.antrenman, sabahMetin ? anda(sabahOfs, 9, 30) : null, sabahMetin);
+  // yemekten sonra yürüyüş
+  const yT = anda(0, 20, 15);
+  await kur('yumak-yemek', A.yemek, yT > simdi ? yT : anda(1, 20, 15), sec(S.bildirimYemek, 'Yemekten sonra 10 dakika yürüyelim mi?'));
+  // zincir tehlikede: bugün işaretlenmediyse 21:00; işaretlendiyse yarına (yarın dinlenme değilse)
+  const zT = anda(0, 21, 0), bt = tur(simdi), yt = tur(anda(1, 12, 0));
+  const zTarih = zT > simdi && bt && bt !== 'dinlenme' && !yapildi(simdi) ? zT : (yt && yt !== 'dinlenme' ? anda(1, 21, 0) : null);
+  await kur('yumak-zincir', A.zincir, zTarih, sec(S.bildirimZincir, 'Zincir tehlikede 🥺').replace(/\{n\}/g, m.seri || 0));
+}
+async function bildirimMenusu() {
+  const A = bAyar(), anahtarlar = Object.keys(B_AD);
+  for (;;) {
+    const a = new Alert();
+    a.title = 'Yumak bildirimleri';
+    a.message = 'Açmak ya da kapatmak için dokun.';
+    for (const k of anahtarlar) a.addAction(`${A[k] ? '✅' : '⬜️'} ${B_AD[k]}`);
+    a.addCancelAction('Bitti');
+    const i = await a.presentSheet();
+    if (i < 0) break;
+    A[anahtarlar[i]] = !A[anahtarlar[i]];
+    Keychain.set(BKC, JSON.stringify(A));
+  }
 }
 
 /* ---------- çizim yardımcıları ---------- */
@@ -328,15 +394,18 @@ let baglanti = kayitliBaglanti();
 if (config.runsInWidget) {
   const m = await modelKur(baglanti);
   Script.setWidget(await ciz(config.widgetFamily || 'medium', m, baglanti));
+  await bildirimleriKur(m, baglanti);
 } else {
   if (!baglanti) baglanti = await linkSor();
   const a = new Alert();
   a.title = 'Yumak widget\'ı 🐾';
   a.message = baglanti ? (baglanti.izle ? 'İzleme linkiyle bağlı (sadece okur).' : 'Kişisel linkle bağlı.') + '\n\nAna ekrana eklemek için: boş bir yere basılı tut → + → Scriptable → boyut seç → widget\'a basılı tut → Widget\'ı Düzenle → Script: bu betik.' : 'Henüz bağlı değil.';
-  a.addAction('Orta boy önizle'); a.addAction('Küçük önizle'); a.addAction('Büyük önizle'); a.addAction('Linki değiştir');
+  a.addAction('Orta boy önizle'); a.addAction('Küçük önizle'); a.addAction('Büyük önizle'); a.addAction('Linki değiştir'); a.addAction('Bildirimler');
   a.addCancelAction('Kapat');
   const i = await a.presentAlert();
   if (i === 3) { const yeni = await linkSor(); if (yeni) baglanti = yeni; }
+  if (i === 4) await bildirimMenusu();
+  if (baglanti) await bildirimleriKur(await modelKur(baglanti), baglanti); // ilk seferde bildirim izni burada sorulur
   if (i >= 0 && i <= 2) {
     const boy = ['medium', 'small', 'large'][i], m = await modelKur(baglanti), w = await ciz(boy, m, baglanti);
     if (boy === 'small') await w.presentSmall(); else if (boy === 'large') await w.presentLarge(); else await w.presentMedium();

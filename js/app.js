@@ -3,6 +3,7 @@ import { AYARLAR, HAREKETLER, ANTRENMANLAR, ISINMA, TAKVIM, NEDEN, KAYNAKLAR, YU
 import { icon, drawHomeItems, hearts, sparkles, checkCanvas } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
+import { initMutfak } from './mutfak.js';
 import { mountAnim } from './tarcin.js';
 import * as bulut from './bulut.js';
 
@@ -14,7 +15,7 @@ const IZLE = LINK.izle;          // izleme modu: buluttaki ilerlemeyi gösterir,
 const UYGULAMA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const state = load();
 function load() {
-  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, sound: false, zaman: 0 };
+  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, mutfak: {}, sound: false, zaman: 0 };
   if (IZLE) return base;         // izlerken bu cihazın kendi kaydına dokunma
   try { return { ...base, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return base; }
 }
@@ -38,7 +39,7 @@ async function buluttanOku() {
     // izlerken ve bu cihazdaki ilk bağlantıda buluttaki kayıt kazanır; sonra en yenisi kazanır
     if (c && (IZLE || ilkBaglanti || c.zaman > (state.zaman || 0))) {
       const degisti = c.zaman !== state.zaman;
-      for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
+      for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
       writeLocal(); ilkBaglanti = false; bulutDurum = 'ok'; bulutSaat = new Date(c.zaman); return degisti;
     }
     ilkBaglanti = false;
@@ -382,7 +383,7 @@ document.getElementById('loadBackup').addEventListener('click', () => {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('backupInput').value.trim()))));
     if (!data || typeof data !== 'object' || !data.start) throw new Error('bad');
-    for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'sound', 'pet']) if (k in data) state[k] = data[k];
+    for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'sound', 'pet']) if (k in data) state[k] = data[k];
     save(); msg('Yüklendi! Sayfa yenileniyor…'); setTimeout(() => location.reload(), 900);
   } catch { msg('Bu kod okunamadı. Tamamını kopyaladığından emin ol.'); }
 });
@@ -452,16 +453,37 @@ function renderIzle() {
 }
 
 /* ---------- başlat ---------- */
-function renderAll() { renderHero(); renderCalendar(); }
+function renderAll() { renderHero(); renderCalendar(); if (mutfak && sekme === 'mutfak') mutfak.ciz(); }
+
+/* ---------- sekmeler: Program / Mutfak ---------- */
+let mutfak = null, sekme = 'program';
+function sekmeAc(ad, gecmis = true) {
+  sekme = ad === 'mutfak' ? 'mutfak' : 'program';
+  const m = sekme === 'mutfak';
+  document.getElementById('sayfaProgram').hidden = m;
+  document.getElementById('sayfaMutfak').hidden = !m;
+  for (const b of document.querySelectorAll('.tab')) { const on = b.dataset.sekme === sekme; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); }
+  if (m) { mutfak ||= initMutfak({ state, save, izle: IZLE }); mutfak.ciz(); }
+  const hedef = m ? '#mutfak' : location.pathname + location.search;
+  if (gecmis && (location.hash === '#mutfak') !== m) history.pushState(null, '', hedef);
+  scrollTo({ top: 0 });
+  window.dispatchEvent(new CustomEvent('yumak', { detail: { type: 'sekme', ad: sekme } }));
+}
+for (const b of document.querySelectorAll('.tab')) b.addEventListener('click', () => sekmeAc(b.dataset.sekme));
+addEventListener('popstate', () => sekmeAc(location.hash === '#mutfak' ? 'mutfak' : 'program', false));
+function tabIkonlari() {
+  for (const [id, ad] of [['tabProgram', 'dumbbell'], ['tabMutfak', 'kase']]) { const c = document.getElementById(id), i = icon(ad, 1); c.width = i.width; c.height = i.height; c.getContext('2d').drawImage(i, 0, 0); }
+}
 function brand() { const c = document.getElementById('brandIcon'), i = icon('paw', 1); c.getContext('2d').drawImage(i, 4, 3); }
-renderWhy(); renderAll(); skyMoon(); stars(); brand(); syncSound(); renderCloud();
+renderWhy(); renderAll(); skyMoon(); stars(); brand(); tabIkonlari(); syncSound(); renderCloud();
+if (LINK.sekme === 'mutfak' || location.hash === '#mutfak') sekmeAc('mutfak', false);
 addEventListener('resize', () => stars());
 document.getElementById('settingsBtn').addEventListener('click', renderCloud);
 (async () => {
   if (await buluttanOku()) { renderAll(); syncSound(); }
   renderCloud(); renderIzle();
   // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
-  initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo });
+  initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo, sefMi: () => sekme === 'mutfak' });
   if (IZLE) setInterval(async () => { if (await buluttanOku()) renderAll(); renderIzle(); }, 60000);
   // ana ekran uygulaması ilk kez açıldıysa: buluta bağlanma bölümünü göster (bir kez)
   if (UYGULAMA && !IZLE && bulut.hazir() && !bulutKod) {

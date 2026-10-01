@@ -44,6 +44,11 @@
   </div>
 </header>
 
+<nav class="wrap tabs" aria-label="Bölümler">
+  <button type="button" class="tab on" data-sekme="program" aria-current="page"><canvas class="pix" id="tabProgram" aria-hidden="true"></canvas>Program</button>
+  <button type="button" class="tab" data-sekme="mutfak"><canvas class="pix" id="tabMutfak" aria-hidden="true"></canvas>Mutfak</button>
+</nav>
+
 <div class="wrap izle-bar" id="izleBar" hidden>
   <div class="izle-inner">
     <strong>İzleme modu</strong>
@@ -55,7 +60,7 @@
   </div>
 </div>
 
-<main class="wrap">
+<main class="wrap" id="sayfaProgram">
   <section class="hero" aria-labelledby="heroTitle">
     <div class="card hero-card" data-platform="hero">
       <p class="eyebrow">Koçun Yumak · tek dambıl · evde</p>
@@ -94,6 +99,8 @@
       <ul id="sources"></ul>
     </details>  </section>
 </main>
+
+<main class="wrap mutfak" id="sayfaMutfak" aria-label="Yumak'ın Mutfağı" hidden></main>
 
 <!-- Yumak'ın evi -->
 <div class="home" id="home" aria-label="Yumak'ın evi">
