@@ -7,7 +7,7 @@ const GUN = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi
 const AY = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const SIRA = ['kahvalti', 'ara', 'aksam'];
 const HARF = ['A', 'B', 'C', 'D'];
-const SU_HEDEF = 8, SEBZE_HEDEF = 3;
+const SU_HEDEF = 8, SEBZE_HEDEF = 3, MEYVE_HEDEF = 2;
 const TUR_AD = { kuvvet: 'Kuvvet günü', yuruyus: 'Yürüyüş günü', uzun: 'Uzun yürüyüş günü', aralikli: 'Aralıklı tempo günü', dinlenme: 'Dinlenme günü' };
 
 export const isoTarih = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -129,10 +129,12 @@ export function initMutfak({ state, save, izle }) {
   }
   // bu akşam seçilirse haftanın dengesi hâlâ kurulabilir mi? (sorun yoksa null)
   function dengeSorun(id, d) {
-    const say = haftaSay(d, d);
-    for (const e of secenekEtiket(id, d)) say[e] = (say[e] || 0) + 1;
+    const say = haftaSay(d, d), etiket = secenekEtiket(id, d);
+    const katki = DENGE.some((D) => D.min && (say[D.e] || 0) < D.min && etiket.has(D.e)); // eksik bir grubu karşılıyor mu
+    for (const e of etiket) say[e] = (say[e] || 0) + 1;
     const fazla = DENGE.find((D) => D.maks && (say[D.e] || 0) > D.maks);
     if (fazla) return `Bu seçimle bu hafta ${say[fazla.e]} akşam ${fazla.ad.toLowerCase()} olur; haftada ${fazla.metin} yeter.`;
+    if (katki) return null; // eksiği kapatan seçim her zaman serbest
     const eksik = DENGE.filter((D) => D.min && (say[D.e] || 0) < D.min), bos = bosAksam(d, d).length;
     if (eksikSay(say) > bos) return `Bu seçimden sonra bu hafta ${bos ? `sadece ${bos} boş akşam kalıyor ama` : 'boş akşam kalmıyor ama'} ${listeYaz(eksik.map((D) => `${D.min - (say[D.e] || 0)} ${D.ad.toLowerCase()}`))} eksik.`;
     return null;
@@ -145,6 +147,7 @@ export function initMutfak({ state, save, izle }) {
       if (sec[o] && OGUNLER[o].secenekler[sec[o]]) { const b = besin(o, sec[o], d); p += b.p; k += b.k; n++; }
       if (ekVar(o, d)) { p += EKLER[o].p; k += EKLER[o].k; }
     }
+    if (kayit(d)?.geceYedi) { const g = geceKalem(d); p += g.p || 0; k += g.k || 0; }
     return { p: Math.round(p), k: Math.round(k / 10) * 10, n };
   }
   const yuvarla = (v) => Math.round(v), kcalYuvarla = (v) => Math.round(v / 10) * 10;
@@ -195,7 +198,7 @@ export function initMutfak({ state, save, izle }) {
     const O = OGUNLER[ogun], ids = gosterilen(ogun, d), sec = kayit(d)?.sec?.[ogun];
     const kuvvet = ogun === 'ara' && programGunu(d)?.tur === 'kuvvet';
     const gk = geceKalem(d);
-    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan <span class="m-gece-p">(≈ ${yuvarla(gk.p)} g protein)</span>:</span>${kalemSatir({ ad: gk.ad, gr: gk.gr, alt: kayit(d)?.deg?.gece ?? 3 }, 'gece', 'gece:gece:0')}</div>` : '';
+    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan <span class="m-gece-p">(≈ ${yuvarla(gk.p)} g protein)</span>:</span>${kalemSatir({ ad: gk.ad, gr: gk.gr, alt: kayit(d)?.deg?.gece ?? 3 }, 'gece', 'gece:gece:0')}<button type="button" class="m-tog m-gece-tog${kayit(d)?.geceYedi ? ' on' : ''}" data-geceyedi aria-pressed="${!!kayit(d)?.geceYedi}">Yedim (günün toplamına say)</button></div>` : '';
     const a = alisma(d), ekOn = a?.ekler.includes(ogun) ? !!kayit(d)?.ek?.[ogun] : null;
     const ek = ekOn == null ? '' : `<div class="m-ek"><span class="m-ek-bas">${a.ad}, istersen ekle:</span>
       <button type="button" class="m-tog${ekOn ? ' on' : ''}" data-ek="${ogun}" aria-pressed="${ekOn}">+ ${EKLER[ogun].ad} <span class="m-gr">(${EKLER[ogun].gr})</span></button></div>`;
@@ -259,19 +262,22 @@ export function initMutfak({ state, save, izle }) {
   }
   const tarihKisa = (d) => `${d.getDate()} ${AY[d.getMonth()]}`;
   function kontrolKart(d) {
-    const k = M.kontrol[isoTarih(d)] || {}, su = k.su || 0, sebze = k.sebze || 0, pr = k.protein || [false, false, false];
-    const hedefler = [su >= SU_HEDEF, sebze >= SEBZE_HEDEF, pr.every(Boolean), !!k.seker, !!k.yuru];
+    const k = M.kontrol[isoTarih(d)] || {}, su = k.su || 0, sebze = k.sebze || 0, meyve = k.meyve || 0, pr = k.protein || [false, false, false];
+    const hedefler = [su >= SU_HEDEF, sebze >= SEBZE_HEDEF, meyve >= MEYVE_HEDEF, pr.every(Boolean), !!k.seker, !!k.yuru];
     const n = hedefler.filter(Boolean).length;
-    const yorum = n === 5 ? 'Beşte beş! Bugün mutfağın yıldızısın. Mrrr.' : n >= 3 ? 'Az kaldı! Bir iki küçük şey daha.' : n >= 1 ? 'Güzel başladık. Bir bardak su daha?' : 'Liste boş duruyor. İlk bardak suyla başlayalım mı?';
+    const yorum = n === hedefler.length ? 'Hepsi tamam! Bugün mutfağın yıldızısın. Mrrr.' : n >= 3 ? 'Az kaldı! Bir iki küçük şey daha.' : n >= 1 ? 'Güzel başladık. Bir bardak su daha?' : 'Liste boş duruyor. İlk bardak suyla başlayalım mı?';
     const bardak = Array.from({ length: SU_HEDEF }, (_, i) => `<button type="button" class="m-ikon-btn${i < su ? ' dolu' : ''}" data-su="${i + 1}" aria-label="${i + 1}. bardak">${ikonHtml('bardak', 3)}</button>`).join('');
     const yaprak = Array.from({ length: SEBZE_HEDEF }, (_, i) => `<button type="button" class="m-ikon-btn${i < sebze ? ' dolu' : ''}" data-sebze="${i + 1}" aria-label="${i + 1}. kez sebze">${ikonHtml('yaprak', 3)}</button>`).join('');
+    const elma = Array.from({ length: MEYVE_HEDEF + 1 }, (_, i) => `<button type="button" class="m-ikon-btn${i < meyve ? ' dolu' : ''}" data-meyve="${i + 1}" aria-label="${i + 1}. meyve">${ikonHtml('elma', 3)}</button>`).join('');
     const pro = ['Kahvaltı', 'Ara öğün', 'Akşam'].map((ad, i) => `<button type="button" class="m-tog${pr[i] ? ' on' : ''}" data-protein="${i}" aria-pressed="${!!pr[i]}">${ikonHtml('yumurtaI', 2)}${ad}</button>`).join('');
     return `<section class="card m-kontrol" data-platform="card">
       <h2 class="h-small">Bugünün küçük listesi</h2>
       <div class="m-k-satir"><span class="m-k-ad">Su</span><span class="m-ikonlar">${bardak}</span><span class="m-k-say">${su}/${SU_HEDEF} bardak</span></div>
-      <p class="m-k-not">1 su bardağı ≈ 200 ml. Hedef 8 bardak ≈ 1,6 litre; şu an ≈ ${ondalik(su * 0.2)} L. Çay ve kahve buna dahil değil.</p>
+      <p class="m-k-not">1 su bardağı ≈ 200 ml. Hedef 8–10 bardak ≈ 1,6–2 litre (antrenman ve sıcak günlerde 10); şu an ≈ ${ondalik(su * 0.2)} L. Çay ve kahve buna dahil değil.</p>
       <div class="m-k-satir"><span class="m-k-ad">Sebze</span><span class="m-ikonlar">${yaprak}</span><span class="m-k-say">${sebze}/${SEBZE_HEDEF} kez</span></div>
       <p class="m-k-not">1 kez = 1 porsiyon sebze (≈ 150 g). Örnek: kahvaltıdaki domates-salatalık tabağı, akşamki 1 kase salata, 6 yemek kaşığı sebze yemeği (taze fasulye, ıspanak, brokoli…) ya da sebzeli çorba. Üçü bir günde = tamam.</p>
+      <div class="m-k-satir"><span class="m-k-ad">Meyve</span><span class="m-ikonlar">${elma}</span><span class="m-k-say">${meyve}/${MEYVE_HEDEF}–3 porsiyon</span></div>
+      <p class="m-k-not">1 porsiyon = 1 orta elma, armut ya da portakal, 2 mandalina, 1 küçük muz ya da 1 küçük kase nar, çilek, üzüm (≈ 150 g). Meyve suyu sayılmaz.</p>
       <div class="m-k-satir"><span class="m-k-ad">Protein</span><span class="m-togs">${pro}</span></div>
       <div class="m-k-satir m-k-iki">
         <button type="button" class="m-tog${k.seker ? ' on' : ''}" data-tog="seker" aria-pressed="${!!k.seker}">Şekerli içecek içmedim</button>
@@ -366,7 +372,7 @@ export function initMutfak({ state, save, izle }) {
       <ul class="m-kaynak">${BESIN_KAYNAK.map((x) => `<li><b>${x.b}:</b> ${x.t}</li>`).join('')}</ul>
       <h3 class="m-alt-baslik">Mit mi, gerçek mi?</h3>
       <div class="m-mitler">${MITLER.map((x, i) => `<button type="button" class="m-mit${acikMit.has(i) ? ' acik' : ''}" data-mit="${i}" aria-expanded="${acikMit.has(i)}">
-        <span class="m-mit-s">"${x.s}"</span>${acikMit.has(i) ? `<span class="m-mit-c ${x.c === 'Gerçek' ? 'g' : 'm'}">${x.c}</span><span class="m-mit-t">${x.t}</span>` : '<span class="m-mit-ipucu">Dokun, Yumak söylesin</span>'}</button>`).join('')}</div>
+        <span class="m-mit-s">"${x.s}"</span>${acikMit.has(i) ? `<span class="m-mit-c ${x.c === 'Gerçek' ? 'g' : x.c === 'Kısmen' ? 'k' : 'm'}">${x.c}</span><span class="m-mit-t">${x.t}</span>` : '<span class="m-mit-ipucu">Dokun, Yumak söylesin</span>'}</button>`).join('')}</div>
       <details class="sources"><summary>Takviyeler hakkında</summary><ul class="m-takviye">${TAKVIYELER.map((x) => `<li><b>${x.b}:</b> ${x.t}</li>`).join('')}</ul></details>
       <details class="sources"><summary>Kaynaklar</summary><ul>
         <li><a href="https://academic.oup.com/jcem/article/108/10/2447/7242360" target="_blank" rel="noopener">2023 Uluslararası Kanıta Dayalı PCOS Kılavuzu (JCEM)</a></li>
@@ -412,6 +418,7 @@ export function initMutfak({ state, save, izle }) {
     if (ds.kopyala != null) { listeKopyala(b); return; }
     if (ds.kcal) { if (acikKcal.has(ds.kcal)) acikKcal.delete(ds.kcal); else acikKcal.add(ds.kcal); ciz(); return; }
     if (izle) return; // izleme modunda hiçbir şey değişmez
+    if (ds.geceyedi != null) { const k = kayitYaz(d); k.geceYedi = !k.geceYedi; kaydet(); ciz(); return; }
     if (ds.ek) { const k = kayitYaz(d); k.ek[ds.ek] = !k.ek[ds.ek]; if (k.ek[ds.ek]) sparkles(r.left + r.width / 2, r.top, 3); kaydet(); ciz(); return; }
     if (ds.sec) {
       const [ogun, id] = ds.sec.split(':'), anahtar = `${isoTarih(d)}:${ogun}:${id}`;
@@ -439,6 +446,7 @@ export function initMutfak({ state, save, izle }) {
       if (kk.su >= SU_HEDEF && n === SU_HEDEF) { hearts(r.left, r.top, 3); yumakSoylesin('8 bardak! Sen bir su perisisin. Ben de bir kap içtim, kutlama olsun.'); }
       kaydet(); ciz(); return;
     }
+    if (ds.meyve) { const n = +ds.meyve; kk.meyve = (kk.meyve || 0) === n ? n - 1 : n; if (kk.meyve >= MEYVE_HEDEF) sparkles(r.left, r.top, 4); kaydet(); ciz(); return; }
     if (ds.sebze) { const n = +ds.sebze; kk.sebze = (kk.sebze || 0) === n ? n - 1 : n; if (kk.sebze >= SEBZE_HEDEF) sparkles(r.left, r.top, 4); kaydet(); ciz(); return; }
     if (ds.protein != null) { const i = +ds.protein; kk.protein = kk.protein || [false, false, false]; kk.protein[i] = !kk.protein[i]; kaydet(); ciz(); return; }
     if (ds.tog) { kk[ds.tog] = !kk[ds.tog]; if (kk[ds.tog]) sparkles(r.left + r.width / 2, r.top, 3); kaydet(); ciz(); return; }

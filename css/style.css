@@ -451,7 +451,7 @@ body.hk-acik { overflow: hidden; }
 .m-mit.acik { background: #fff; }
 .m-mit-s { font-weight: 700; }
 .m-mit-c { font: 700 13px/1 var(--font-pixel); justify-self: start; padding: 4px 7px; border: 2px solid var(--ink); }
-.m-mit-c.g { background: var(--mint); } .m-mit-c.m { background: var(--pink-soft); }
+.m-mit-c.g { background: var(--mint); } .m-mit-c.m { background: var(--pink-soft); } .m-mit-c.k { background: var(--butter); }
 .m-mit-ipucu { font: 500 12px/1 var(--font-pixel); color: var(--ink-soft); }
 .m-takviye li { margin: 6px 0; }
 body.izle .m-sec-bas, body.izle .m-alt, body.izle .m-baska, body.izle .m-ikon-btn, body.izle .m-tog, body.izle .m-liste-satir, body.izle [data-temizle] { pointer-events: none; }
@@ -490,3 +490,4 @@ body.izle .m-sec-bas, body.izle .m-alt, body.izle .m-baska, body.izle .m-ikon-bt
 
 /* ---------- yeni sürüm bandı ---------- */
 .yeni-surum { position: fixed; left: 50%; bottom: calc(var(--home-h) + 14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 900; display: flex; gap: 10px; align-items: center; padding: 8px 10px 8px 14px; background: var(--paper); border: 3px solid var(--ink); box-shadow: var(--shadow); font: 600 15px/1.2 var(--font-body); max-width: calc(100vw - 32px); }
+.m-gece-tog { margin-top: 6px; font-size: 13px; }
