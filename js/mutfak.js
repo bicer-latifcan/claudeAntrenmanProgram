@@ -1,5 +1,5 @@
 // Yumak'ın Mutfağı: günün öğün seçenekleri, "değiştir", küçük kontrol listesi, alışveriş listesi, notlar.
-import { GRUPLAR, OGUNLER, DONGU, REYON, ILKELER, MITLER, TAKVIYELER } from './mutfak-veri.js';
+import { GRUPLAR, OGUNLER, DONGU, REYON, ILKELER, MITLER, TAKVIYELER, HEDEF, ALISMA, EKLER } from './mutfak-veri.js';
 import { AYARLAR, TAKVIM } from './program.js';
 import { hearts, sparkles, icon } from './fx.js';
 
@@ -21,7 +21,7 @@ export function initMutfak({ state, save, izle }) {
   const M = state.mutfak || (state.mutfak = {});
   for (const k of ['gun', 'kontrol', 'liste']) if (!M[k] || typeof M[k] !== 'object') M[k] = {};
   let secili = bugun(), acikDegis = null;
-  const acikMit = new Set();
+  const acikMit = new Set(), acikKcal = new Set(); // kalori gizli: protein çipine dokununca görünür
 
   /* ---------- hesaplar ---------- */
   function haftaTipi(d) { // iki haftalık döngü: ISO hafta numarası tek mi çift mi
@@ -33,10 +33,17 @@ export function initMutfak({ state, save, izle }) {
   function programGunu(d) {
     const [y, m, g] = String(state.start).split('-').map(Number), bas = new Date(y, m - 1, g);
     const f = Math.round((d - bas) / 864e5);
-    return f < 0 || f >= AYARLAR.haftaSayisi * 7 ? null : TAKVIM[Math.floor(f / 7)][f % 7];
+    return f < 0 || f >= AYARLAR.haftaSayisi * 7 ? null : { ...TAKVIM[Math.floor(f / 7)][f % 7], hafta: Math.floor(f / 7) + 1 };
   }
+  // alışma dönemi: sadece ilk turda, ilk haftalarda hedef yavaş yavaş 1500'e iner ("istersen ekle" önerileri)
+  function alisma(d) {
+    if (state.arsiv?.length) return null;
+    const pg = programGunu(d); if (!pg) return null;
+    return ALISMA.find((a) => a.haftalar.includes(pg.hafta)) || null;
+  }
+  const ekVar = (ogun, d) => !!(alisma(d)?.ekler.includes(ogun) && kayit(d)?.ek?.[ogun]);
   const kayit = (d) => M.gun[isoTarih(d)];
-  const kayitYaz = (d) => (M.gun[isoTarih(d)] ||= { sec: {}, deg: {}, ofs: {} });
+  const kayitYaz = (d) => { const k = (M.gun[isoTarih(d)] ||= { sec: {}, deg: {}, ofs: {} }); k.ek ||= {}; return k; };
   function gosterilen(ogun, d) {
     let liste = [...DONGU[ogun][haftaTipi(d)][gunNo(d)]];
     const S = OGUNLER[ogun].secenekler;
@@ -55,10 +62,25 @@ export function initMutfak({ state, save, izle }) {
     const deg = kayit(d)?.deg || {};
     return OGUNLER[ogun].secenekler[id].kalem.map(([grup, v], s) => {
       const alt = deg[`${ogun}.${id}.${s}`] ?? v, g = GRUPLAR[grup][alt] || GRUPLAR[grup][v];
-      return { grup, alt, ad: g.ad, al: g.al };
+      return { grup, alt, ad: g.ad, al: g.al, p: g.p || 0, k: g.k || 0 };
     });
   }
-  const geceKalem = (d) => GRUPLAR.gece[kayit(d)?.deg?.gece ?? 0];
+  const geceKalem = (d) => GRUPLAR.gece[kayit(d)?.deg?.gece ?? 3];
+  // yaklaşık besin değeri: seçenek (değiştirilen kalemlerle) ve günün seçilen öğünleri
+  const besin = (ogun, id, d) => kalemler(ogun, id, d).reduce((a, k) => ({ p: a.p + k.p, k: a.k + k.k }), { p: 0, k: 0 });
+  function gunBesin(d) {
+    const sec = kayit(d)?.sec || {}; let p = 0, k = 0, n = 0;
+    for (const o of SIRA) {
+      if (sec[o] && OGUNLER[o].secenekler[sec[o]]) { const b = besin(o, sec[o], d); p += b.p; k += b.k; n++; }
+      if (ekVar(o, d)) { p += EKLER[o].p; k += EKLER[o].k; }
+    }
+    return { p: Math.round(p), k: Math.round(k / 10) * 10, n };
+  }
+  const yuvarla = (v) => Math.round(v), kcalYuvarla = (v) => Math.round(v / 10) * 10;
+  function besinCip(anahtar, p, k, ek = '') { // protein yazar; dokununca (ya da üstüne gelince) kalori de görünür
+    const acik = acikKcal.has(anahtar);
+    return `<button type="button" class="m-besin${acik ? ' acik' : ''}" data-kcal="${anahtar}" data-ipucu="≈ ${kcalYuvarla(k)} kcal" aria-pressed="${acik}" title="Kaloriyi görmek için dokun">≈ ${yuvarla(p)} g protein${ek}${acik ? ` · ${kcalYuvarla(k)} kcal` : ''}</button>`;
+  }
 
   /* ---------- çizim ---------- */
   function tarihBaslik(d) {
@@ -85,16 +107,32 @@ export function initMutfak({ state, save, izle }) {
       </div>
       <p class="lede">Her öğünde ${gunNo(d) >= 5 ? '3' : '2'} kolay seçenek var; birini seç. Bir yiyecek evde yoksa ya da canın istemiyorsa yanındaki <b>değiştir</b>e bas, yerine eşdeğeri gelsin.</p>
       <div class="m-gun">${tur ? `<span class="chip strong ${tur === 'kuvvet' ? 't-A' : 't-' + tur}">${TUR_AD[tur]}</span>` : ''}<span class="m-gun-ipucu">${ipucu}</span></div>
+      ${gunCubuk(d)}
     </section>`;
+  }
+  function gunCubuk(d) {
+    const g = gunBesin(d), a = alisma(d), hedefK = a ? a.kcal : HEDEF.kcal, acik = acikKcal.has('gun');
+    const oran = Math.min(1, g.p / HEDEF.protein);
+    return `<div class="m-besin-gun">
+      <div class="m-besin-ust"><span class="m-besin-baslik">Günün proteini</span>
+        <button type="button" class="m-besin${acik ? ' acik' : ''}" data-kcal="gun" data-ipucu="≈ ${g.k} / ${hedefK} kcal" aria-pressed="${acik}" title="Kaloriyi görmek için dokun">≈ ${g.p} / ${HEDEF.protein} g${acik ? ` · ${g.k} / ${hedefK} kcal` : ''}</button></div>
+      <div class="m-cubuk" role="progressbar" aria-label="Günün proteini" aria-valuemin="0" aria-valuemax="${HEDEF.protein}" aria-valuenow="${g.p}"><span style="width:${Math.round(oran * 100)}%"></span></div>
+      <p class="m-besin-not">${g.n ? (g.p >= HEDEF.protein * 0.9 ? 'Protein hedefi tamam! Kasların teşekkür ediyor.' : 'Seçtiğin öğünlere göre. Öğün seçtikçe dolar.') : 'Öğün seçtikçe dolar. Hedef günde yaklaşık 100 gram.'}${a ? ` <b>${a.ad}:</b> hedef yavaş yavaş iniyor; kartlarda "istersen ekle" önerileri var.` : ''}</p>
+    </div>`;
   }
   function ogunKart(ogun, d) {
     const O = OGUNLER[ogun], ids = gosterilen(ogun, d), sec = kayit(d)?.sec?.[ogun];
     const kuvvet = ogun === 'ara' && programGunu(d)?.tur === 'kuvvet';
-    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan:</span>${kalemSatir({ ad: geceKalem(d).ad, alt: kayit(d)?.deg?.gece ?? 0 }, 'gece', 'gece:gece:0')}</div>` : '';
+    const gk = geceKalem(d);
+    const gece = ogun === 'aksam' ? `<div class="m-gece"><span class="m-gece-bas">Gece acıkırsan <span class="m-gece-p">(≈ ${yuvarla(gk.p)} g protein)</span>:</span>${kalemSatir({ ad: gk.ad, alt: kayit(d)?.deg?.gece ?? 3 }, 'gece', 'gece:gece:0')}</div>` : '';
+    const a = alisma(d), ekOn = a?.ekler.includes(ogun) ? !!kayit(d)?.ek?.[ogun] : null;
+    const ek = ekOn == null ? '' : `<div class="m-ek"><span class="m-ek-bas">${a.ad}, istersen ekle:</span>
+      <button type="button" class="m-tog${ekOn ? ' on' : ''}" data-ek="${ogun}" aria-pressed="${ekOn}">+ ${EKLER[ogun].ad}</button></div>`;
     return `<article class="card m-ogun" data-platform="card" data-ogun="${ogun}">
       <header class="m-ogun-bas">${ikonHtml(O.ikon, 3, 'm-ogun-ikon')}<h2>${O.ad}</h2><span class="m-saat">${O.saat}</span></header>
       ${kuvvet ? '<p class="m-ipucu">Antrenman günü: proteinli seçenekler önde.</p>' : ''}
       <div class="m-secenekler">${ids.map((id, i) => secenekKart(ogun, id, i, sec === id, d, !!sec && ids.includes(sec) && sec !== id)).join('')}</div>
+      ${ek}
       ${gece}
       <button type="button" class="m-baska" data-baska="${ogun}">${ids.length > 2 ? 'Hiçbiri olmadı mı?' : 'İkisi de olmadı mı?'} Başka göster ↻</button>
     </article>`;
@@ -102,7 +140,7 @@ export function initMutfak({ state, save, izle }) {
   function kalemSatir(k, grup, anahtar) {
     const acik = acikDegis === anahtar;
     const [, , s] = anahtar.split(':');
-    const altlar = acik ? `<div class="m-altlar">${GRUPLAR[grup].map((g, i) => (i === k.alt ? '' : `<button type="button" class="m-alt" data-alt="${anahtar}:${i}">${g.ad}</button>`)).join('')}</div>` : '';
+    const altlar = acik ? `<div class="m-altlar">${GRUPLAR[grup].map((g, i) => (i === k.alt ? '' : `<button type="button" class="m-alt" data-alt="${anahtar}:${i}">${g.ad}${g.p != null ? ` <span class="m-alt-p">${yuvarla(g.p)} g</span>` : ''}</button>`)).join('')}</div>` : '';
     return `<span class="m-kalem"><span class="m-kalem-ad">${k.ad}</span><button type="button" class="m-degis${acik ? ' on' : ''}" data-degis="${anahtar}" aria-expanded="${acik}" aria-label="${k.ad}: değiştir">${acik ? 'kapat' : 'değiştir'}</button></span>${altlar}`;
   }
   function secenekKart(ogun, id, i, on, d, kucuk = false) { // kucuk: başka bir seçenek seçildiyse sadece başlık
@@ -113,7 +151,8 @@ export function initMutfak({ state, save, izle }) {
         <span class="m-harf">${HARF[i]}</span><span class="m-sec-ad">${S.ad}</span><span class="m-dk">${S.dk} dk</span>
         <span class="m-tik">${on ? 'Seçildi ✓ (bırakmak için dokun)' : kucuk ? 'Buna geç' : 'Bunu seç'}</span>
       </button>
-      ${kucuk ? '' : `<ul class="m-kalemler">${satirlar}</ul>${S.not ? `<p class="m-not">${S.not}</p>` : ''}`}
+      ${kucuk ? '' : `<div class="m-sec-besin">${(() => { const b = besin(ogun, id, d); return besinCip(`${ogun}:${id}`, b.p, b.k); })()}</div>
+      <ul class="m-kalemler">${satirlar}</ul>${S.not ? `<p class="m-not">${S.not}</p>` : ''}${S.neden ? `<p class="m-neden"><b>Neden bu?</b> ${S.neden}</p>` : ''}`}
     </div>`;
   }
   function kontrolKart(d) {
@@ -140,7 +179,7 @@ export function initMutfak({ state, save, izle }) {
     const urunler = new Map();
     for (let i = 0; i < 7; i++) {
       const d = gunEkle(d0, i);
-      for (const ogun of SIRA) for (const k of kalemler(ogun, secilen(ogun, d), d)) for (const [urun, mik, birim, reyon] of k.al) {
+      for (const ogun of SIRA) for (const k of [...kalemler(ogun, secilen(ogun, d), d), ...(ekVar(ogun, d) ? [EKLER[ogun]] : [])]) for (const [urun, mik, birim, reyon] of k.al) {
         const u = urunler.get(urun) || { reyon, mik: 0, birim, ogun: 0 };
         u.ogun++; if (mik != null) { u.mik += mik; u.birim = birim; }
         urunler.set(urun, u);
@@ -212,7 +251,9 @@ export function initMutfak({ state, save, izle }) {
     if (ds.mit != null) { const i = +ds.mit; if (acikMit.has(i)) acikMit.delete(i); else acikMit.add(i); ciz(); return; }
     if (ds.degis) { acikDegis = acikDegis === ds.degis ? null : ds.degis; ciz(); return; }
     if (ds.kopyala != null) { listeKopyala(b); return; }
+    if (ds.kcal) { if (acikKcal.has(ds.kcal)) acikKcal.delete(ds.kcal); else acikKcal.add(ds.kcal); ciz(); return; }
     if (izle) return; // izleme modunda hiçbir şey değişmez
+    if (ds.ek) { const k = kayitYaz(d); k.ek[ds.ek] = !k.ek[ds.ek]; if (k.ek[ds.ek]) sparkles(r.left + r.width / 2, r.top, 3); kaydet(); ciz(); return; }
     if (ds.sec) {
       const [ogun, id] = ds.sec.split(':'), k = kayitYaz(d);
       if (k.sec[ogun] === id) delete k.sec[ogun]; else { k.sec[ogun] = id; sparkles(r.left + r.width / 2, r.top + 10, 4); }
