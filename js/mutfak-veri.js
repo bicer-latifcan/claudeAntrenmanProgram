@@ -308,3 +308,31 @@ export const TAKVIYELER = [
   { b: 'Tarçın, nane çayı, yeşil çay', t: 'Yemekte baharat, demlenmiş çay olarak keyifle. Kapsül ve yüksek doz değil.' },
   { b: 'B12 (metformin kullanıyorsan)', t: 'Uzun süreli metformin B12\'yi düşürebilir. Yorgunluk ya da karıncalanma olursa ölçtür.' },
 ];
+
+// Haftalık denge: serbest seçimde de hafta bütününde gerekenler yensin.
+// ETIKET: hangi kalem hangi gruba sayılır (grup → sıra no → etiket). Akşamlar bir günde bir kez sayılır.
+export const ETIKET = {
+  protein: { 0: 'kirmizi', 1: 'tavuk', 2: 'tavuk', 3: 'tavuk', 4: 'balik', 5: 'kirmizi', 6: 'yumurta', 7: 'balik', 8: 'tavuk', 9: ['tavuk', 'baklagil'], 10: 'yumurta', 11: 'balik', 12: 'kirmizi', 13: 'balik' },
+  baklagil: { 0: 'baklagil', 1: 'baklagil', 2: 'baklagil', 3: 'baklagil' },
+  tahil: { 1: 'baklagil' }, // mercimek çorbası
+  etliSebze: { 0: 'kirmizi', 1: 'kirmizi', 2: 'kirmizi', 3: 'kirmizi', 4: 'tavuk' },
+};
+// min/maks: haftalık hedef (Pazartesi–Pazar). Eksik kalırsa haftanın sonuna doğru o yemek menüye kendiliğinden gelir.
+export const DENGE = [
+  { e: 'balik', ad: 'Balık', min: 2, metin: 'haftada 2', neden: 'Omega-3: PMOS’ta yüksek olabilen trigliseridi düşürür, iltihaplanmayı azaltır.' },
+  { e: 'baklagil', ad: 'Baklagil', min: 2, metin: 'haftada 2–3', neden: 'Lif, magnezyum ve folat: insülin direncine en iyi gelen besin grubu.' },
+  { e: 'kirmizi', ad: 'Kırmızı et', min: 1, maks: 2, metin: 'haftada 1–2', neden: 'Demir, B12 ve çinkonun en kolay emilen kaynağı; fazlası gerekmez.' },
+  { e: 'tavuk', ad: 'Tavuk', bilgi: true, neden: 'Yağsız protein; her gün olabilir ama balık ve baklagilin yerini tutmaz.' },
+];
+// Vitamin ve mineraller nereden geliyor (notlar bölümünde)
+export const BESIN_KAYNAK = [
+  { b: 'Kalsiyum', t: 'Her gün peynir, yoğurt, süzme yoğurt, ayran ya da kefir (günde 3 porsiyon süt ürünü menüde var).' },
+  { b: 'Demir', t: 'Haftada 1–2 kırmızı et, baklagil, ıspanak, kabak çekirdeği. Yanına limon ya da biber (C vitamini) emilimi artırır.' },
+  { b: 'B12', t: 'Yumurta, süt ürünleri, et, tavuk, balık: menüde her gün var.' },
+  { b: 'Omega-3', t: 'Haftada 2 balık (somon, hamsi, sardalya en zengini) ve ceviz.' },
+  { b: 'D vitamini', t: 'Balık ve yumurtada biraz var ama yemekle yetmez; güneş ve gerekirse kan değerine göre takviye.' },
+  { b: 'Lif', t: 'Bulgur, baklagil, tam buğday ve çavdar ekmeği, sebze, meyve. Günde 25 gramı geçmek kan şekerini dengeler.' },
+  { b: 'Folat ve magnezyum', t: 'Baklagil, yeşil yapraklılar (ıspanak, roka, maydanoz), kuruyemiş, tam tahıl.' },
+  { b: 'C vitamini', t: 'Meyve, biber, domates, limonlu salata: her gün.' },
+  { b: 'İyot', t: 'İyotlu tuz, süt ürünleri, yumurta, balık.' },
+];
