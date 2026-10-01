@@ -4,6 +4,7 @@ import { icon, drawHomeItems, hearts, sparkles, checkCanvas } from './fx.js';
 import { hash, vnoise } from './pixel.js';
 import { initPet } from './pet.js';
 import { initMutfak } from './mutfak.js';
+import { initOzet } from './ozet.js';
 import { mountAnim } from './tarcin.js';
 import * as bulut from './bulut.js';
 
@@ -15,12 +16,15 @@ const IZLE = LINK.izle;          // izleme modu: buluttaki ilerlemeyi gösterir,
 const UYGULAMA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const state = load();
 function load() {
-  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, mutfak: {}, sound: false, zaman: 0 };
+  const base = { start: AYARLAR.varsayilanBaslangic, done: {}, sets: {}, kg: {}, kgGun: {}, walk: {}, mutfak: {}, arsiv: [], ozetGoruldu: null, sound: false, zaman: 0 };
   if (IZLE) return base;         // izlerken bu cihazın kendi kaydına dokunma
   try { return { ...base, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return base; }
 }
 const writeLocal = () => { if (IZLE) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* gizli pencere vb. */ } };
 let bulutKod = LINK.kod, ilkBaglanti = LINK.yeni, bulutDurum = '', bulutSaat = null, bulutZamanlayici = 0;
+try { if (localStorage.getItem('yumak-ilk-baglanti') === '1') { ilkBaglanti = true; localStorage.removeItem('yumak-ilk-baglanti'); } } catch { /* yok */ }
+// şifreyle giriş: izleme modu dışında, giriş yapılmamışsa kapıda Yumak şifre sorar
+const GIRIS_GEREK = !IZLE && bulut.hazir() && !bulut.girisli();
 export function save() {
   if (IZLE) return;
   state.zaman = Date.now(); writeLocal();
@@ -39,7 +43,7 @@ async function buluttanOku() {
     // izlerken ve bu cihazdaki ilk bağlantıda buluttaki kayıt kazanır; sonra en yenisi kazanır
     if (c && (IZLE || ilkBaglanti || c.zaman > (state.zaman || 0))) {
       const degisti = c.zaman !== state.zaman;
-      for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
+      for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'arsiv', 'ozetGoruldu', 'sound', 'pet', 'zaman']) if (k in c.veri) state[k] = c.veri[k];
       writeLocal(); ilkBaglanti = false; bulutDurum = 'ok'; bulutSaat = new Date(c.zaman); return degisti;
     }
     ilkBaglanti = false;
@@ -155,7 +159,7 @@ function renderHero() {
     el.className = 'today t-dinlenme';
     el.innerHTML = before
       ? `<span class="t-label">Program ${s.getDate()} ${AY[s.getMonth()]} ${gunAdi(s)} başlıyor</span><span class="t-title">Isınmaya hazır mısın?</span><div class="row"><button class="pbtn primary" data-open="0,0">İlk günü aç</button></div>`
-      : `<span class="t-label">8 hafta tamamlandı</span><span class="t-title">Dolunay! Tebrikler.</span><div class="row"><button class="pbtn" id="restart">Yeni tarihle başla</button></div>`;
+      : `<span class="t-label">${state.arsiv?.length ? `${state.arsiv.length + 1}. tur · ` : ''}8 hafta tamamlandı</span><span class="t-title">Dolunay! Tebrikler.</span><div class="row"><button class="pbtn primary" data-ozet="ac">Ay nasıl geçti? Özeti gör</button></div>`;
   } else {
     const i = dayInfo(t.w, t.d), dt = dayDate(t.w, t.d), done = state.done[key(t.w, t.d)];
     el.className = `today ${i.cls}`;
@@ -226,7 +230,7 @@ function lastKg(h, dayK) {
     const v = state.kgGun[`h${Math.floor(i / 7) + 1}g${(i % 7) + 1}:${h}`];
     if (v != null && v !== '') return v;
   }
-  return null;
+  return state.arsiv?.length ? (state.kg?.[h] ?? null) : null; // yeni turda: önceki turun son ağırlığı
 }
 function exCard(item, dayK, idx, compact = false) {
   const h = HAREKETLER[item.h], ag = h.agirlik;
@@ -383,14 +387,15 @@ document.getElementById('loadBackup').addEventListener('click', () => {
   try {
     const data = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('backupInput').value.trim()))));
     if (!data || typeof data !== 'object' || !data.start) throw new Error('bad');
-    for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'sound', 'pet']) if (k in data) state[k] = data[k];
+    for (const k of ['start', 'done', 'sets', 'kg', 'kgGun', 'walk', 'mutfak', 'arsiv', 'sound', 'pet']) if (k in data) state[k] = data[k];
     save(); msg('Yüklendi! Sayfa yenileniyor…'); setTimeout(() => location.reload(), 900);
   } catch { msg('Bu kod okunamadı. Tamamını kopyaladığından emin ol.'); }
 });
 
 document.addEventListener('click', (e) => {
   const o = e.target.closest('[data-open]'); if (o) { const [w, d] = o.dataset.open.split(',').map(Number); openDay(w, d); }
-  if (e.target.id === 'restart') document.getElementById('settingsBtn').click();
+  const oz = e.target.closest('[data-ozet]');
+  if (oz) { const v = oz.dataset.ozet; if (v === 'ac') ozet.ac(); else if (v === 'ara') ozet.ara(); else ozet.arsiv(+v); }
 });
 
 /* ---------- ses ---------- */
@@ -410,35 +415,33 @@ function renderCloud() {
     btn('İzlemeden çık', () => { bulut.izlemedenCik(); location.reload(); });
     return;
   }
-  if (!bulutKod) {
-    st.textContent = UYGULAMA
-      ? 'Uygulamaya hoş geldin! Uygulama Safari’den ayrı bir hafıza kullanır: kişisel linkini aşağıya yapıştır, ilerlemen buluttan gelsin. Linkin yoksa yeni bir yedek aç.'
-      : 'Kapalı. Kişisel linkin varsa aşağıya yapıştır; yoksa yeni bir yedek aç. Telefon değişse bile ilerleme linkle geri gelir.';
-    const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Kişisel linki yapıştır'; inp.className = 'kg'; inp.style.width = '100%'; inp.id = 'cloudLinkInput';
-    act.append(inp);
-    btn('Bağlan', async () => {
-      const k = bulut.koduKaydet(inp.value); if (!k) { st.textContent = 'Bu link okunamadı. Tamamını yapıştırdığından emin ol.'; return; }
-      bulutKod = k; ilkBaglanti = true; st.textContent = 'Bağlanıyor…';
-      if (await buluttanOku()) { renderAll(); syncSound(); location.reload(); } else renderCloud();
-    }, true);
-    btn('Yeni yedek aç', async () => { bulutKod = bulut.yeniKod(); st.textContent = 'Açılıyor…'; await bulutaYaz(); });
+  if (!bulutKod || !bulut.girisli()) {
+    st.textContent = 'Giriş yapılmadı. Şifrenle girince ilerlemen buluta yedeklenir.';
+    btn('Şifreyle giriş', () => kapiyiGoster(), true);
     return;
   }
   const saat = bulutSaat ? `${String(bulutSaat.getHours()).padStart(2, '0')}:${String(bulutSaat.getMinutes()).padStart(2, '0')}` : '';
-  st.textContent = bulutDurum === 'hata' ? 'Açık, ama son yedek gönderilemedi (internet yok olabilir). Bağlantı gelince tekrar dener.'
-    : `Açık ✓${saat ? ` Son yedek: ${saat}` : ''}. Kişisel linki sadece kendi cihazlarında kullan.`;
-  btn('Kişisel linki kopyala', async (e) => {
-    const link = bulut.kisiselLink(bulutKod);
-    try { await navigator.clipboard.writeText(link); e.target.textContent = 'Kopyalandı!'; }
-    catch { document.getElementById('backupInput').value = link; e.target.textContent = 'Link aşağıda'; }
-  });
+  st.textContent = bulutDurum === 'hata' ? 'Şifreyle giriş yapıldı, ama son yedek gönderilemedi (internet yok olabilir). Bağlantı gelince tekrar dener.'
+    : `Şifreyle giriş yapıldı ✓${saat ? ` Son yedek: ${saat}` : ''}. Başka bir cihazdan da aynı şifreyle girebilirsin.`;
   btn('İzleme linkini kopyala', async (e) => {
     const link = bulut.izlemeLinki(bulutKod);
     try { await navigator.clipboard.writeText(link); e.target.textContent = 'Kopyalandı!'; }
     catch { document.getElementById('backupInput').value = link; e.target.textContent = 'Link aşağıda'; }
   });
   btn('Şimdi yedekle', () => bulutaYaz());
+  const cikis = btn('Çıkış yap', async () => {
+    if (cikis.dataset.emin !== '1') { cikis.dataset.emin = '1'; cikis.textContent = 'Emin misin? Tekrar dokun'; return; }
+    cikis.textContent = 'Yedekleniyor…'; clearTimeout(bulutZamanlayici);
+    await bulutaYaz(); // son değişiklikler buluta gitsin
+    bulut.cikisYap([KEY]); // bu cihazdaki ilerleme silinir; bulutta kalır
+    location.reload();
+  });
+  cikis.classList.add('ghost');
 }
+function kapiyiGoster() {
+  import('./giris.js').then((g) => g.kapiyiAc({ mod: bulutKod ? 'olustur' : 'giris', eskiKod: bulutKod || null, veri: state, sonra: () => location.reload() }));
+}
+if (GIRIS_GEREK) kapiyiGoster();
 
 /* ---------- izleme modu: üstte şerit, değiştiren her şey kapalı ---------- */
 function renderIzle() {
@@ -453,10 +456,20 @@ function renderIzle() {
 }
 
 /* ---------- başlat ---------- */
-function renderAll() { renderHero(); renderCalendar(); if (mutfak && sekme === 'mutfak') mutfak.ciz(); }
+function renderAll() { renderHero(); renderCalendar(); renderTurlar(); if (mutfak && sekme === 'mutfak') mutfak.ciz(); }
+// ayarlarda turlar: şimdiye kadarki özet ve arşivdeki eski turlar
+function renderTurlar() {
+  const box = document.getElementById('turBox'); if (!box) return;
+  const a = state.arsiv || [];
+  box.innerHTML = `<strong class="sec-title">Turlar</strong>
+    <p class="muted">${a.length ? `${a.length} tur arşivde. Şu an ${a.length + 1}. turdasın.` : 'İlk turdasın. 8 hafta bitince "Ay nasıl geçti?" özeti gelir ve tur arşive kaydedilir.'}</p>
+    <div class="row-end"><button type="button" class="pbtn small" data-ozet="ara">Şimdiye kadarki özet</button>
+    ${a.map((t, i) => `<button type="button" class="pbtn small" data-ozet="${i}">${t.tur}. tur özeti</button>`).join('')}</div>`;
+}
 
 /* ---------- sekmeler: Program / Mutfak ---------- */
 let mutfak = null, sekme = 'program';
+const ozet = initOzet({ state, save, drawMoon, renderAll: () => renderAll(), izle: IZLE });
 function sekmeAc(ad, gecmis = true) {
   sekme = ad === 'mutfak' ? 'mutfak' : 'program';
   const m = sekme === 'mutfak';
@@ -484,16 +497,8 @@ document.getElementById('settingsBtn').addEventListener('click', renderCloud);
   renderCloud(); renderIzle();
   // Yumak'ın mama/su durumu sık kaydedilir: sadece tarayıcıya (buluta gerçek ilerleme gider)
   initPet({ state, save: writeLocal, describeDay, sozler: YUMAK_SOZLER, etkinlik: ETKINLIK_SOZLER, drawHomeItems, todayIndex, dayInfo, sefMi: () => sekme === 'mutfak' });
+  if (!GIRIS_GEREK) ozet.bittiyse(); // tur bittiyse özeti bir kez kendiliğinden aç
   if (IZLE) setInterval(async () => { if (await buluttanOku()) renderAll(); renderIzle(); }, 60000);
-  // ana ekran uygulaması ilk kez açıldıysa: buluta bağlanma bölümünü göster (bir kez)
-  if (UYGULAMA && !IZLE && bulut.hazir() && !bulutKod) {
-    try {
-      if (!localStorage.getItem('yumak-uygulama-karsilandi')) {
-        localStorage.setItem('yumak-uygulama-karsilandi', '1');
-        setTimeout(() => { document.getElementById('settingsBtn').click(); document.getElementById('cloudBox')?.scrollIntoView({ block: 'center' }); }, 700);
-      }
-    } catch { /* hafıza kapalı */ }
-  }
 })();
 document.getElementById('izleRefresh')?.addEventListener('click', async (e) => { e.target.textContent = 'Yenileniyor…'; if (await buluttanOku()) renderAll(); renderIzle(); e.target.textContent = 'Yenile'; });
 document.getElementById('izleExit')?.addEventListener('click', () => { bulut.izlemedenCik(); location.reload(); });

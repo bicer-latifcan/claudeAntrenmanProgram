@@ -67,3 +67,44 @@ export async function yukle(kod, veri) {
   });
   if (!r.ok) throw new Error('bulut-yazma-' + r.status);
 }
+
+/* ---------- şifreyle giriş ----------
+   Şifre hiçbir yerde saklanmaz. Şifreden PBKDF2 (SHA-256, sabit tuz) ile 28 harflik bir "işaretçi kodu" türetilir.
+   Buluttaki işaretçi kaydı ({isaretci: asılKod}) asıl ilerleme kaydını gösterir; böylece eski linkler,
+   widget ve izleme linki aynı kayıtla çalışmaya devam eder. Widget aynı hesabı kendi içinde yapar. */
+const GIRIS_KEY = 'yumak-giris';
+export const GIRIS_TUZ = 'yumak-8-hafta:giris:v1', GIRIS_TEKRAR = 30000;
+export async function turet(sifre) {
+  const enc = new TextEncoder();
+  const anahtar = await crypto.subtle.importKey('raw', enc.encode(String(sifre).normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
+  const b = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(GIRIS_TUZ), iterations: GIRIS_TEKRAR, hash: 'SHA-256' }, anahtar, 256));
+  let s = ''; for (let i = 0; i < 28; i++) s += ABC[b[i] % ABC.length];
+  return s;
+}
+export const girisli = () => { try { return localStorage.getItem(GIRIS_KEY) === '1' && !!localStorage.getItem(KOD_KEY); } catch { return false; } };
+export const mevcutKod = () => { try { return localStorage.getItem(KOD_KEY); } catch { return null; } };
+// şifreyle giriş: işaretçiyi bul, asıl kodu cihaza kaydet
+export async function sifreyleGir(sifre) {
+  const p = await turet(sifre), c = await indir(p);
+  if (!c) return { hata: 'yok' };
+  const hedef = (c.veri && c.veri.isaretci) || p;
+  localStorage.setItem(KOD_KEY, hedef); localStorage.removeItem(IZLE_KEY); localStorage.setItem(GIRIS_KEY, '1');
+  localStorage.setItem('yumak-ilk-baglanti', '1'); // bu cihazda buluttaki kayıt kazansın
+  return { kod: hedef };
+}
+// yeni şifre: mevcut kayda (eski link/cihazdaki kod) ya da yeni bir kayda işaretçi oluştur
+export async function sifreOlustur(sifre, hedefKod, ilkVeri) {
+  const p = await turet(sifre), varolan = await indir(p);
+  if (varolan) { // aynı kayda zaten bağlıysa (ör. ikinci cihaz) sorun yok: giriş yap
+    if (hedefKod && varolan.veri && varolan.veri.isaretci === hedefKod) return sifreyleGir(sifre);
+    return { hata: 'var' };
+  }
+  const hedef = hedefKod || yeniKod();
+  if (!hedefKod && ilkVeri) await yukle(hedef, { ...ilkVeri, zaman: Date.now() });
+  await yukle(p, { isaretci: hedef, zaman: Date.now() });
+  localStorage.setItem(KOD_KEY, hedef); localStorage.removeItem(IZLE_KEY); localStorage.setItem(GIRIS_KEY, '1');
+  return { kod: hedef };
+}
+export function cikisYap(anahtarlar = []) {
+  for (const k of [KOD_KEY, IZLE_KEY, GIRIS_KEY, 'yumak-ilk-baglanti', 'yumak-uygulama-karsilandi', ...anahtarlar]) try { localStorage.removeItem(k); } catch { /* yok */ }
+}

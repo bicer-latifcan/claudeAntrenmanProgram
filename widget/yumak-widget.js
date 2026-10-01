@@ -28,7 +28,77 @@ const yol = (ad) => fm.joinPath(klasor, ad);
 function oku(ad) { try { return fm.fileExists(yol(ad)) ? fm.readString(yol(ad)) : null; } catch (e) { return null; } }
 function yaz(ad, metin) { try { fm.writeString(yol(ad), metin); } catch (e) { /* yer yok */ } }
 
-/* ---------- bağlantı: kişisel ya da izleme linki ---------- */
+/* ---------- şifreden kod: sitedekiyle aynı hesap (PBKDF2-HMAC-SHA256, 30.000 tekrar, sabit tuz) ---------- */
+// Scriptable'da WebCrypto yok; küçük bir SHA-256 burada. Sonuç cihazda saklanır, bir kez hesaplanır.
+const KABC = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+const GIRIS_TUZ = 'yumak-8-hafta:giris:v1', GIRIS_TEKRAR = 30000;
+const K256 = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+const H0 = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+const W = new Array(64);
+function sikistir(h, blok) { // h: 8 kelimelik durum (yerinde güncellenir), blok: 64 bayt
+  for (let i = 0; i < 16; i++) W[i] = (blok[i * 4] << 24) | (blok[i * 4 + 1] << 16) | (blok[i * 4 + 2] << 8) | blok[i * 4 + 3];
+  for (let i = 16; i < 64; i++) {
+    const x = W[i - 15], y = W[i - 2];
+    const s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+    const s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+    W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+  }
+  let a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], k = h[7];
+  for (let i = 0; i < 64; i++) {
+    const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+    const t1 = (k + S1 + ((e & f) ^ (~e & g)) + K256[i] + W[i]) | 0;
+    const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+    const t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+    k = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+  }
+  h[0] = (h[0] + a) | 0; h[1] = (h[1] + b) | 0; h[2] = (h[2] + c) | 0; h[3] = (h[3] + d) | 0;
+  h[4] = (h[4] + e) | 0; h[5] = (h[5] + f) | 0; h[6] = (h[6] + g) | 0; h[7] = (h[7] + k) | 0;
+}
+const baytlar = (str) => { const u = unescape(encodeURIComponent(str)); const o = []; for (let i = 0; i < u.length; i++) o.push(u.charCodeAt(i)); return o; };
+const kelimeBayt = (h) => { const o = []; for (const w of h) o.push((w >>> 24) & 255, (w >>> 16) & 255, (w >>> 8) & 255, w & 255); return o; };
+function sha256(msg) { // tam SHA-256 (uzun anahtarlar için)
+  const h = H0.slice(), b = msg.slice(), uz = msg.length * 8;
+  b.push(0x80); while (b.length % 64 !== 56) b.push(0);
+  for (let i = 7; i >= 0; i--) b.push(Math.floor(uz / Math.pow(2, i * 8)) & 255);
+  for (let i = 0; i < b.length; i += 64) sikistir(h, b.slice(i, i + 64));
+  return kelimeBayt(h);
+}
+function tekBlok(durum, msg, toplamBayt) { // önceden işlenmiş 64 baytın ardından tek bloğa sığan mesaj
+  const h = durum.slice(), b = msg.slice(), uz = toplamBayt * 8;
+  b.push(0x80); while (b.length < 56) b.push(0);
+  for (let i = 7; i >= 0; i--) b.push(Math.floor(uz / Math.pow(2, i * 8)) & 255);
+  sikistir(h, b);
+  return kelimeBayt(h);
+}
+function sifredenKod(sifre) {
+  let anahtar = baytlar(String(sifre).trim().normalize('NFC'));
+  if (anahtar.length > 64) anahtar = sha256(anahtar);
+  const ic = H0.slice(), dis = H0.slice(), ip = [], op = [];
+  for (let i = 0; i < 64; i++) { const k = anahtar[i] || 0; ip.push(k ^ 0x36); op.push(k ^ 0x5c); }
+  sikistir(ic, ip); sikistir(dis, op);
+  const hmac = (msg) => tekBlok(dis, tekBlok(ic, msg, 64 + msg.length), 96);
+  let u = hmac(baytlar(GIRIS_TUZ).concat([0, 0, 0, 1]));
+  const t = u.slice();
+  for (let j = 1; j < GIRIS_TEKRAR; j++) { u = hmac(u); for (let i = 0; i < 32; i++) t[i] ^= u[i]; }
+  let s = ''; for (let i = 0; i < 28; i++) s += KABC[t[i] % KABC.length];
+  return s;
+}
+async function sifreylBagla(sifre) { // işaretçi kaydını oku, asıl kodu bul
+  const p = sifredenKod(sifre);
+  const r = new Request(`https://firestore.googleapis.com/v1/projects/${BULUT.projectId}/databases/(default)/documents/ilerleme/${p}?key=${BULUT.apiKey}`);
+  r.timeoutInterval = 12;
+  const j = await r.loadJSON();
+  if (!r.response || r.response.statusCode !== 200 || !j.fields) return null;
+  const veri = JSON.parse(j.fields.veri.stringValue);
+  return veri.isaretci || p;
+}
+
+/* ---------- bağlantı: şifre, kişisel ya da izleme linki ---------- */
 function linkAyikla(metin) {
   const s = String(metin || '').trim();
   const m = s.match(/#(kod|izle)-([A-Za-z0-9]{24,})\s*$/) || s.match(/^()([A-Za-z0-9]{24,})$/);
@@ -37,16 +107,21 @@ function linkAyikla(metin) {
 async function linkSor() {
   const a = new Alert();
   a.title = 'Yumak widget\'ı';
-  a.message = 'Kişisel linkini (…#kod-…) yapıştır. Sadece izlemek için izleme linki (…#izle-…) de olur.\n\nLink sitede: Başlangıç → Bulut yedeği → Kişisel linki kopyala.';
+  a.message = 'Sitedeki giriş şifreni yaz. (Eski kişisel link ya da sadece izlemek için izleme linki de olur.)';
   let pano = '';
   try { pano = Pasteboard.pasteString() || ''; } catch (e) { /* pano boş */ }
-  a.addTextField('Linki yapıştır', linkAyikla(pano) ? pano : '');
+  a.addSecureTextField('Şifre ya da link', linkAyikla(pano) ? pano : '');
   a.addAction('Kaydet');
   a.addCancelAction('Vazgeç');
   if (await a.presentAlert() !== 0) return null;
-  const v = a.textFieldValue(0), b = linkAyikla(v);
-  if (b) Keychain.set(KC, v.trim());
-  else { const h = new Alert(); h.title = 'Bu link okunamadı'; h.message = 'Linkin tamamını yapıştırdığından emin ol.'; h.addAction('Tamam'); await h.presentAlert(); }
+  const v = a.textFieldValue(0).trim();
+  let b = v.includes('#') ? linkAyikla(v) : null; // link mi?
+  if (!b && v.length >= 10) { // şifre: sitedekiyle aynı hesapla kodu bul (birkaç saniye sürebilir)
+    try { const kod = await sifreylBagla(v); if (kod) b = { kod, izle: false }; } catch (e) { /* internet yok */ }
+    if (b) Keychain.set(KC, `#kod-${b.kod}`);
+  }
+  if (!b && (b = linkAyikla(v))) Keychain.set(KC, v); // eski usul: çıplak kod
+  if (!b) { const h = new Alert(); h.title = 'Bağlanamadım'; h.message = 'Şifre yanlış olabilir ya da internet yok. Sitedeki şifreyle aynı olmalı.'; h.addAction('Tamam'); await h.presentAlert(); }
   return b;
 }
 function kayitliBaglanti() {
@@ -140,7 +215,7 @@ function seriHesapla(plan, done, fark) {
 async function modelKur(baglanti) {
   const simdi = (typeof YUMAK_TARIH !== 'undefined' && YUMAK_TARIH) ? new Date(YUMAK_TARIH) : new Date();
   const bugun = new Date(simdi); bugun.setHours(0, 0, 0, 0);
-  if (!baglanti) return { durum: 'bagla', resim: 'bekle', ust: 'YUMAK', baslik: 'Bağlan', alt: 'Betiği Scriptable\'da bir kez aç', soz: 'Linkini yapıştır, ilerlemen buraya gelsin!', satir: 'Yumak: linki bağla', hafta: [], simdi };
+  if (!baglanti) return { durum: 'bagla', resim: 'bekle', ust: 'YUMAK', baslik: 'Bağlan', alt: 'Betiği Scriptable\'da bir kez aç', soz: 'Şifreni yaz, ilerlemen buraya gelsin!', satir: 'Yumak: şifreyle bağlan', hafta: [], simdi };
   const [plan, durum] = await Promise.all([planGetir(), durumGetir(baglanti.kod)]);
   if (!plan) return { durum: 'yok', resim: 'dinlenme', ust: 'YUMAK', baslik: 'İnternet bekleniyor', alt: 'Bağlanınca kendiliğinden yenilenir', soz: 'Zzz… internet gelince uyanırım.', satir: 'Yumak internet bekliyor', hafta: [], simdi };
   const veri = durum.veri || {};
@@ -415,7 +490,7 @@ if (config.runsInWidget) {
   const a = new Alert();
   a.title = 'Yumak widget\'ı 🐾';
   a.message = baglanti ? (baglanti.izle ? 'İzleme linkiyle bağlı (sadece okur).' : 'Kişisel linkle bağlı.') + '\n\nAna ekrana eklemek için: boş bir yere basılı tut → + → Scriptable → boyut seç → widget\'a basılı tut → Widget\'ı Düzenle → Script: bu betik.' : 'Henüz bağlı değil.';
-  a.addAction('Orta boy önizle'); a.addAction('Küçük önizle'); a.addAction('Büyük önizle'); a.addAction('Linki değiştir'); a.addAction('Bildirimler');
+  a.addAction('Orta boy önizle'); a.addAction('Küçük önizle'); a.addAction('Büyük önizle'); a.addAction('Şifre / bağlantı değiştir'); a.addAction('Bildirimler');
   a.addCancelAction('Kapat');
   const i = await a.presentAlert();
   if (i === 3) { const yeni = await linkSor(); if (yeni) baglanti = yeni; }
